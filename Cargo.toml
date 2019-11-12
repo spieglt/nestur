@@ -1,0 +1,9 @@
+[package]
+name = "nestur"
+version = "0.1.0"
+authors = ["Theron <tspiegl@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+sdl2 = "0.32"
+cpuprofiler = "0.0.3"
