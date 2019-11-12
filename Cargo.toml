@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 sdl2 = "0.32"
 cpuprofiler = "0.0.3"
+
+[profile.release]
+debug = true
