@@ -6,8 +6,6 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 - One line of `unsafe` (`std::mem::transmute::<u8>() -> i8`)
 
-- No heap allocation
-
 - NTSC timing
 
 ## Controls:
