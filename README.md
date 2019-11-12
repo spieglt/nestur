@@ -35,5 +35,3 @@ Thanks to Michael Fogleman's https://github.com/fogleman/nes for getting me unst
 - Player 2 controller?
 
 - Sprite bug when Goomba smashed in Mario
-
-- Figure out performance issue on Windows
