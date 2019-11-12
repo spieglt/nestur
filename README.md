@@ -1,5 +1,4 @@
 # nestur
-The NES you left outside in the rain but let dry and still kind of works.
 
 This is an NES emulator and a work in progress. The CPU and PPU work, though there are still at least a couple bugs. I've mostly tested on Donkey Kong and Super Mario Bros. so far. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well.
 
@@ -18,7 +17,7 @@ ___________________
 |   A    |    D   |
 |   B    |    F   |
 | Start  |  Enter |
-| Select | L-Shift|
+| Select | R-Shift|
 |   Up   |   Up   |
 |  Down  |  Down  |
 |  Left  |  Left  |
