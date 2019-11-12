@@ -216,7 +216,7 @@ impl super::Ppu {
             if sprite_attributes & (1<<7) == 0 { // if vertical flip bit not set
                 fine_y = self.scanline - sprite_y_position; // row-within-sprite offset is difference between current scanline and top of sprite
             } else { // if flipped vertically
-                fine_y = self.sprite_size as usize - (self.scanline - sprite_y_position);
+                fine_y = self.sprite_size as usize - 1 - (self.scanline - sprite_y_position);
             }
             address += fine_y;
             let low_pattern_table_byte = self.read(address);
