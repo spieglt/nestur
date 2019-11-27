@@ -9,9 +9,13 @@ pub struct Apu {
     triangle: Triangle,
     noise:    Noise,
     dmc:      DMC,
+    
+    square_table: Vec<f32>,
+    tnd_table: Vec<f32>,
 }
 
 struct Square {
+    sample: u16,
     duty_cycle: usize,
     length_counter_halt: bool, // (this bit is also the envelope's loop flag)
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
@@ -24,6 +28,7 @@ struct Square {
 // $4008 	Hlll.llll 	Triangle channel length counter halt and linear counter load (write)
 // bit 7 	H--- ---- 	Halt length counter (this bit is also the linear counter's control flag) 
 struct Triangle {
+    sample: u16,
     timer: usize,
     length_counter: usize, // (this bit is also the linear counter's control flag) 
     linear_counter: usize,
@@ -32,6 +37,7 @@ struct Triangle {
 // $400E 	M---.PPPP 	Mode and period (write)
 // bit 7 	M--- ---- 	Mode flag 
 struct Noise {
+    sample: u16,
     timer: usize,
     length_counter: usize,
     envelope: usize,
@@ -45,12 +51,18 @@ struct DMC {
 
 impl Apu {
     fn new() -> Self {
+        let square_table = (0..31).map(|x| 95.52/(8128.0 / x as f32) + 100.0).collect();
+        let tnd_table = (0..203).map(|x| 163.67/(24329.0 / x as f32) + 100.0).collect();
         Apu {
             square1:    Square::new(),
             square2:    Square::new(),
             triangle: Triangle::new(),
             noise:       Noise::new(),
             dmc:           DMC::new(),
+
+            square_table: square_table,
+            tnd_table: tnd_table,
+
         }
     }
 
@@ -80,5 +92,15 @@ impl Apu {
             0x4016 => (),
             0x4017 => self.frame_counter(value),
         }
+    }
+
+    fn mix(&self) -> f32 {
+        let square_out = self.square_table[self.square1.sample + self.square2.sample as usize];
+        let tnd_out = self.tnd_table[(3*self.triangle.sample)+(2*self.noise.sample)+self.dmc.sample as usize];
+        square_out + tnd_out
+    }
+
+    fn frame_counter(value: u8) {
+        
     }
 }
