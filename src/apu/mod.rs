@@ -46,7 +46,7 @@ struct Noise {
 }
 
 struct DMC {
-
+    sample: u16,
 }
 
 impl Apu {
@@ -91,16 +91,21 @@ impl Apu {
             0x4015 => self.control(value),
             0x4016 => (),
             0x4017 => self.frame_counter(value),
+            _ => panic!("bad address written: 0x{:X}", address),
         }
     }
 
     fn mix(&self) -> f32 {
-        let square_out = self.square_table[self.square1.sample + self.square2.sample as usize];
-        let tnd_out = self.tnd_table[(3*self.triangle.sample)+(2*self.noise.sample)+self.dmc.sample as usize];
+        let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
+        let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
         square_out + tnd_out
     }
 
-    fn frame_counter(value: u8) {
+    fn frame_counter(&mut self, value: u8) {
         
+    }
+
+    fn control(&mut self, value: u8) {
+
     }
 }

@@ -19,6 +19,17 @@ impl super::Noise {
         self.linear_feedback_sr >>= 1;
         self.linear_feedback_sr |= feedback << 14;
     }
+
+    pub fn envelope(&mut self, value: u8) {
+        
+    }
+
+    pub fn loop_noise(&mut self, value: u8) {
+        
+    }
+    pub fn load_length_counter(&mut self, value: u8) {
+        
+    }
 }
 
 // When the timer clocks the shift register, the following actions occur in order:

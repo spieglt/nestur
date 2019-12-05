@@ -8,6 +8,27 @@ impl super::Square {
             length_counter: 0,
             envelope: 0,
             sweep: 0,
+            sample: 0,
         }
+    }
+
+    pub fn clock(&mut self) {
+
+    }
+
+    pub fn duty(&mut self, value: u8) {
+
+    }
+
+    pub fn sweep(&mut self, value: u8) {
+        
+    }
+
+    pub fn timer_low(&mut self, value: u8) {
+
+    }
+
+    pub fn timer_high(&mut self, value: u8) {
+        
     }
 }
