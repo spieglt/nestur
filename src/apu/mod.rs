@@ -16,7 +16,7 @@ pub struct Apu {
 
 struct Square {
     sample: u16,
-    duty_cycle: usize,
+    duty_cycle: u8,
     length_counter_halt: bool, // (this bit is also the envelope's loop flag)
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
     timer: usize,
@@ -47,6 +47,12 @@ struct Noise {
 
 struct DMC {
     sample: u16,
+}
+
+struct Envelope {
+    start_flag: bool,
+    divider: usize,
+    delay_level_counter: usize,
 }
 
 impl Apu {

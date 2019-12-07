@@ -17,7 +17,8 @@ impl super::Square {
     }
 
     pub fn duty(&mut self, value: u8) {
-
+        self.duty_cycle = value >> 6;
+        self.length_counter_halt = 
     }
 
     pub fn sweep(&mut self, value: u8) {
