@@ -64,8 +64,8 @@ pub struct Ppu {
     grayscale:                     bool,
     show_background_left:          bool, // 1: Show background in leftmost 8 pixels of screen, 0: Hide
     show_sprites_left:             bool, // 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
-    show_background:           bool, // 1: Show background
-    show_sprites:              bool, // 1: Show sprites
+    show_background:               bool, // 1: Show background
+    show_sprites:                  bool, // 1: Show sprites
     emphasize_red:                 bool, // Emphasize red
     emphasize_green:               bool, // Emphasize green
     emphasize_blue:                bool, // Emphasize blue

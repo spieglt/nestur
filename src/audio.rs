@@ -3,7 +3,7 @@ extern crate sdl2;
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 
 pub struct Speaker {
-    buffer: [u8; 4096],
+    buffer: [f32; 4096],
 }
 
 impl AudioCallback for Speaker {

@@ -3,6 +3,10 @@ mod square;
 mod triangle;
 mod dmc;
 
+// APU clock ticks every other CPU cycle.
+// Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
+// Length counter controls note durations.
+
 pub struct Apu {
     square1:  Square,
     square2:  Square,
@@ -83,6 +87,10 @@ impl Apu {
         }
     }
 
+    pub fn clock(&mut self) {
+
+    }
+
     fn write_reg(&mut self, address: usize, value: u8) {
         match address {
             0x4000 => self.square1.duty(value),
@@ -118,6 +126,11 @@ impl Apu {
         square_out + tnd_out
     }
 
+    //     mode 0:    mode 1:       function
+    // ---------  -----------  -----------------------------
+    // - - - f    - - - - -    IRQ (if bit 6 is clear)
+    // - l - l    - l - - l    Length counter and sweep
+    // e e e e    e e e - e    Envelope and linear counter
     fn step_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
         if value & (1<<7) == 0 { 

@@ -190,7 +190,7 @@ impl Cpu {
         // look up instruction in table and execute
         self.opcode_table[opcode](self, address, mode);
         // maintain 1 apu cycle per 2 cpu cycles
-        if self.
+        self.even = if self.even { self.apu.step(); false } else { true };
         // return how many cycles it took
         self.clock - clock
     }
