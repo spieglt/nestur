@@ -12,6 +12,10 @@ pub struct Apu {
     
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
+
+    frame_counter: u8,
+    mode: u8,
+    interrupt_inhibit: u8,
 }
 
 struct Square {
@@ -55,8 +59,12 @@ struct Envelope {
     delay_level_counter: usize,
 }
 
+struct FrameCounter {
+
+}
+
 impl Apu {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let square_table = (0..31).map(|x| 95.52/(8128.0 / x as f32) + 100.0).collect();
         let tnd_table = (0..203).map(|x| 163.67/(24329.0 / x as f32) + 100.0).collect();
         Apu {
@@ -69,6 +77,9 @@ impl Apu {
             square_table: square_table,
             tnd_table: tnd_table,
 
+            frame_counter: 0,
+            mode: 0,
+            interrupt_inhibit: 0,
         }
     }
 
@@ -96,7 +107,7 @@ impl Apu {
             0x4014 => (),
             0x4015 => self.control(value),
             0x4016 => (),
-            0x4017 => self.frame_counter(value),
+            0x4017 => self.step_frame_counter(value),
             _ => panic!("bad address written: 0x{:X}", address),
         }
     }
@@ -107,8 +118,20 @@ impl Apu {
         square_out + tnd_out
     }
 
-    fn frame_counter(&mut self, value: u8) {
-        
+    fn step_frame_counter(&mut self, value: u8) {
+        // 0 selects 4-step sequence, 1 selects 5-step sequence
+        if value & (1<<7) == 0 { 
+            self.mode = 0;
+            self.frame_counter = 4;
+        } else {
+            self.mode = 1;
+            self.frame_counter = 5;
+        }
+        // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
+        if value & (1<<6) != 0 {
+            self.interrupt_inhibit = 0;
+        }
+
     }
 
     fn control(&mut self, value: u8) {

@@ -33,3 +33,23 @@ impl super::Square {
         
     }
 }
+
+struct EnvelopeGenerator {
+
+}
+
+struct SweepUnit {
+
+}
+
+struct Timer {
+
+}
+
+struct Sequencer {
+
+}
+
+struct LengthCounter {
+
+}

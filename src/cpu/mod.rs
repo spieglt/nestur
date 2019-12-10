@@ -78,6 +78,7 @@ pub struct Cpu {
 
     // apu
     apu: super::Apu,
+    even: bool, // keep track of whether we're on an even cycle for apu
 
     // controller
     pub strobe: u8,
@@ -146,6 +147,13 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> u64 {
+        // for apu
+        if self.even {
+            self.even = false;
+        } else {
+            self.even = true;
+        }
+        
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
             self.delay -= 1;
@@ -181,6 +189,8 @@ impl Cpu {
         self.advance_pc(mode);
         // look up instruction in table and execute
         self.opcode_table[opcode](self, address, mode);
+        // maintain 1 apu cycle per 2 cpu cycles
+        if self.
         // return how many cycles it took
         self.clock - clock
     }
