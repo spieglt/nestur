@@ -7,6 +7,16 @@ mod dmc;
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
 // Length counter controls note durations.
 
+// How to sync clock to audio?
+// Measure time slept to see if it will be a problem.
+// What if the APU kept a ring buffer of audio data way longer than the audio device's sample size,
+// and that was in a struct with some markers, so the audio device can just consume what it needs during PPU's sleep and mark
+// where it left off? But wouldn't it catch up and consume buffer? It won't catch up if it's big enough, and the APU can
+// change the markers somehow as it needs to? Or audio callback truncates what it consumed and adjusts head? No, audio device doesn't
+// need all samples, it needs one from the stream 44100 time per second. So just an if statement, if time has passed grab a sample.
+// But then that won't be running during PPU 60Hz sleep... So run audio in its own thread... Except then it won't work on Windows because of SDL...
+// So just run the console in its own thread and video/audio in the main thread... But that's annoying.
+
 pub struct Apu {
     square1:  Square,
     square2:  Square,

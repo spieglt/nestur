@@ -4,13 +4,14 @@ use sdl2::audio::{AudioCallback, AudioSpecDesired};
 
 pub struct Speaker {
     buffer: [f32; 4096],
+    head: usize,
 }
 
 impl AudioCallback for Speaker {
     type Channel = f32;
     fn callback(&mut self, out: &mut [f32]) {
         for (i, x) in out.iter_mut().enumerate() {
-            *x = self.buffer[i]; // get data from apu
+            *x = self.buffer[i+self.head..i+self.head+4096]; // get data from apu
         }
     }
 }
