@@ -100,6 +100,7 @@ impl Cpu {
             mapper_func: cart.cpu_mapper_func,
             ppu: ppu,
             apu: apu,
+            even: true,
             strobe: 0,
             button_states: 0,
             button_number: 0,
@@ -148,11 +149,7 @@ impl Cpu {
 
     pub fn step(&mut self) -> u64 {
         // for apu
-        if self.even {
-            self.even = false;
-        } else {
-            self.even = true;
-        }
+        self.even = if self.even {false} else {true};
         
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {

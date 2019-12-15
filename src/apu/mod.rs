@@ -30,6 +30,7 @@ pub struct Apu {
     frame_counter: u8,
     mode: u8,
     interrupt_inhibit: u8,
+    frame_interrupt: bool,
 }
 
 struct Square {
@@ -41,6 +42,7 @@ struct Square {
     length_counter: usize,
     envelope: usize,
     sweep: usize,
+    enabled: bool,
 }
 
 // $4008 	Hlll.llll 	Triangle channel length counter halt and linear counter load (write)
@@ -50,6 +52,7 @@ struct Triangle {
     timer: usize,
     length_counter: usize, // (this bit is also the linear counter's control flag) 
     linear_counter: usize,
+    enabled: bool,
 }
 
 // $400E 	M---.PPPP 	Mode and period (write)
@@ -61,10 +64,15 @@ struct Noise {
     envelope: usize,
     linear_feedback_sr: u16,
     mode: bool, // also called loop noise, bit 7 of $400E
+    enabled: bool,
 }
 
 struct DMC {
     sample: u16,
+    enabled: bool,
+    interrupt: bool,
+    length_counter: usize,
+    bytes_remaining: usize,
 }
 
 struct Envelope {
@@ -94,14 +102,15 @@ impl Apu {
             frame_counter: 0,
             mode: 0,
             interrupt_inhibit: 0,
+            frame_interrupt: false,
         }
     }
 
-    pub fn clock(&mut self) {
+    pub fn step(&mut self) {
 
     }
 
-    fn write_reg(&mut self, address: usize, value: u8) {
+    pub fn write_reg(&mut self, address: usize, value: u8) {
         match address {
             0x4000 => self.square1.duty(value),
             0x4001 => self.square1.sweep(value),
@@ -158,6 +167,85 @@ impl Apu {
     }
 
     fn control(&mut self, value: u8) {
+        // Writing to this register clears the DMC interrupt flag.
+        self.dmc.interrupt = false;
+        // Writing a zero to any of the channel enable bits will silence that channel and immediately set its length counter to 0.
+        if value & (1<<0) != 0 {
+            self.square1.enabled = true;
+        } else {
+            self.square1.enabled = false;
+            self.square1.length_counter = 0;
+        }
+        if value & (1<<1) != 0 {
+            self.square2.enabled = true;
 
+        } else {
+            self.square2.enabled = false;
+            self.square2.length_counter = 0;
+
+        }
+        if value & (1<<2) != 0 {
+            self.triangle.enabled = true;
+
+        } else {
+            self.triangle.enabled = false;
+            self.triangle.length_counter = 0;
+
+        }
+        if value & (1<<3) != 0 {
+            self.noise.enabled = true;
+
+        } else {
+            self.noise.enabled = false;
+            self.noise.length_counter = 0;
+
+        }
+        if value & (1<<4) != 0 {
+            self.dmc.enabled = true;
+            // If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
+            // If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
+            if self.dmc.bytes_remaining != 0 {
+                // TODO: how does dmc repeat?
+            }
+        } else {
+            self.dmc.enabled = false;
+            self.dmc.length_counter = 0;
+            // If the DMC bit is clear, the DMC bytes remaining will be set to 0 and the DMC will silence when it empties.
+            self.dmc.bytes_remaining = 0;
+        }
+    }
+
+    pub fn read_status(&mut self) -> u8 {
+        // IF-D NT21: 	DMC interrupt (I), frame interrupt (F), DMC active (D), length counter > 0 (N/T/2/1)
+        let mut val = 0;
+        // N/T/2/1 will read as 1 if the corresponding length counter is greater than 0. For the triangle channel, the status of the linear counter is irrelevant.
+        if self.square1.length_counter != 0 {
+            val |= 1<<0;
+        }
+        if self.square2.length_counter != 0 {
+            val |= 1<<1;
+        }
+        if self.triangle.length_counter != 0 {
+            val |= 1<<2;
+        }
+        if self.noise.length_counter != 0 {
+            val |= 1<<3;
+        }
+        // D will read as 1 if the DMC bytes remaining is more than 0.
+        if self.dmc.bytes_remaining != 0 {
+            val |= 1<<4;
+        }
+        if self.frame_interrupt {
+            val |= 1<<6;
+        }
+        if self.dmc.interrupt {
+            val |= 1<<7;
+        }
+        
+
+        // Reading this register clears the frame interrupt flag (but not the DMC interrupt flag).
+        self.frame_interrupt = false;
+        // TODO: If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
+        val
     }
 }

@@ -4,6 +4,8 @@ impl super::Triangle {
             timer: 0,
             length_counter: 0,
             linear_counter: 0,
+            sample: 0,
+            enabled: false,
         }
     }
 

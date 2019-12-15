@@ -2,6 +2,10 @@ impl super::DMC {
     pub fn new() -> Self {
         super::DMC {
             sample: 0,
+            enabled: false,
+            bytes_remaining: 0,
+            interrupt: false,
+            length_counter: 0,
         }
     }
 

@@ -6,6 +6,8 @@ impl super::Noise {
             envelope: 0,
             linear_feedback_sr: 1, // On power-up, the shift register is loaded with the value 1. 
             mode: false, // also called loop noise, bit 7 of $400E
+            sample: 0,
+            enabled: false,
         }
     }
 
