@@ -16,6 +16,9 @@ pub struct Square {
     envelope: usize,
     sweep: usize,
     pub enabled: bool,
+    decay_counter: u8,
+    start: bool,
+    divider: usize,
 }
 
 impl Square {
@@ -31,6 +34,9 @@ impl Square {
             sweep: 0,
             sample: 0,
             enabled: false,
+            decay_counter: 0,
+            start: false,
+            divider: 0,
         }
     }
 
@@ -38,21 +44,42 @@ impl Square {
 
     }
 
+    pub fn clock_frame_counter(&mut self) {
+
+    }
+
+    pub fn clock_envelope(&mut self) {
+        if self.start {
+            self.envelope -= 1;
+            self.start = false;
+        } else {
+
+        }
+    }
+
+    // $4000/$4004
     pub fn duty(&mut self, value: u8) {
         self.duty_cycle = duty_cycle_sequences[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
-        
+        if self.constant_volume_flag {
+            self.envelope = value & 0b1111;
+        } else {
+            self.envelope = self.decay_counter;
+        }
     }
 
+    // $4001/$4005
     pub fn sweep(&mut self, value: u8) {
         
     }
 
+    // $4002/$4006
     pub fn timer_low(&mut self, value: u8) {
 
     }
 
+    // $4003/$4007
     pub fn timer_high(&mut self, value: u8) {
         
     }

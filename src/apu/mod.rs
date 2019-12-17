@@ -21,6 +21,8 @@ use dmc::DMC;
 // need all samples, it needs one from the stream 44100 time per second. So just an if statement, if time has passed grab a sample.
 // But then that won't be running during PPU 60Hz sleep... So run audio in its own thread... Except then it won't work on Windows because of SDL...
 // So just run the console in its own thread and video/audio in the main thread... But that's annoying.
+// No. Don't have to be concerned about the audio device, that's solved by the buffer, and the 44100 samples get fed in batches of 4096 from the large buffer,
+// when the device needs them, which is accomplished just by calling .resume() before the main loop starts. So a large buffer really should allow for the 60Hz sleep lock.
 
 pub struct Apu {
     square1:  Square,
@@ -84,6 +86,7 @@ impl Apu {
             0x4006 => self.square2.timer_low(value),
             0x4007 => self.square2.timer_high(value),
             0x4008 => self.triangle.counter(value),
+            0x4009 => (),
             0x400A => self.triangle.timer_low(value),
             0x400B => self.triangle.timer_high(value),
             0x400C => self.noise.envelope(value),
@@ -204,7 +207,6 @@ impl Apu {
         if self.dmc.interrupt {
             val |= 1<<7;
         }
-        
 
         // Reading this register clears the frame interrupt flag (but not the DMC interrupt flag).
         self.frame_interrupt = false;
