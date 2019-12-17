@@ -1,6 +1,14 @@
-impl super::DMC {
+pub struct DMC {
+    pub sample: u16,
+    pub enabled: bool,
+    pub interrupt: bool,
+    pub length_counter: usize,
+    pub bytes_remaining: usize,
+}
+
+impl DMC {
     pub fn new() -> Self {
-        super::DMC {
+        DMC {
             sample: 0,
             enabled: false,
             bytes_remaining: 0,

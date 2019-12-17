@@ -1,6 +1,19 @@
-impl super::Noise {
+
+// $400E 	M---.PPPP 	Mode and period (write)
+// bit 7 	M--- ---- 	Mode flag 
+pub struct Noise {
+    pub sample: u16,
+    timer: usize,
+    pub length_counter: usize,
+    envelope: usize,
+    linear_feedback_sr: u16,
+    mode: bool, // also called loop noise, bit 7 of $400E
+    pub enabled: bool,
+}
+
+impl Noise {
     pub fn new() -> Self {
-        super::Noise {
+        Noise {
             timer: 0,
             length_counter: 0,
             envelope: 0,

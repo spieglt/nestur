@@ -3,6 +3,11 @@ mod square;
 mod triangle;
 mod dmc;
 
+use noise::Noise;
+use square::Square;
+use triangle::Triangle;
+use dmc::DMC;
+
 // APU clock ticks every other CPU cycle.
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
 // Length counter controls note durations.
@@ -31,48 +36,6 @@ pub struct Apu {
     mode: u8,
     interrupt_inhibit: u8,
     frame_interrupt: bool,
-}
-
-struct Square {
-    sample: u16,
-    duty_cycle: u8,
-    length_counter_halt: bool, // (this bit is also the envelope's loop flag)
-    constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    timer: usize,
-    length_counter: usize,
-    envelope: usize,
-    sweep: usize,
-    enabled: bool,
-}
-
-// $4008 	Hlll.llll 	Triangle channel length counter halt and linear counter load (write)
-// bit 7 	H--- ---- 	Halt length counter (this bit is also the linear counter's control flag) 
-struct Triangle {
-    sample: u16,
-    timer: usize,
-    length_counter: usize, // (this bit is also the linear counter's control flag) 
-    linear_counter: usize,
-    enabled: bool,
-}
-
-// $400E 	M---.PPPP 	Mode and period (write)
-// bit 7 	M--- ---- 	Mode flag 
-struct Noise {
-    sample: u16,
-    timer: usize,
-    length_counter: usize,
-    envelope: usize,
-    linear_feedback_sr: u16,
-    mode: bool, // also called loop noise, bit 7 of $400E
-    enabled: bool,
-}
-
-struct DMC {
-    sample: u16,
-    enabled: bool,
-    interrupt: bool,
-    length_counter: usize,
-    bytes_remaining: usize,
 }
 
 struct Envelope {
