@@ -1,4 +1,4 @@
-const duty_cycle_sequences: [[u8; 8]; 4] = [
+const DUTY_CYCLE_SEQUENCES: [[u8; 8]; 4] = [
     [0, 1, 0, 0, 0, 0, 0, 0],
     [0, 1, 1, 0, 0, 0, 0, 0],
     [0, 1, 1, 1, 1, 0, 0, 0],
@@ -11,20 +11,20 @@ pub struct Square {
     duty_counter: u8,
     length_counter_halt: bool, // (this bit is also the envelope's loop flag)
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    timer: usize,
-    pub length_counter: usize,
-    envelope: usize,
-    sweep: usize,
+    timer: u16,
+    pub length_counter: u8,
+    envelope: u8,
+    sweep: u8,
     pub enabled: bool,
     decay_counter: u8,
     start: bool,
-    divider: usize,
+    divider: u8,
 }
 
 impl Square {
     pub fn new() -> Self {
         Square {
-            duty_cycle: duty_cycle_sequences[0],
+            duty_cycle: DUTY_CYCLE_SEQUENCES[0],
             duty_counter: 0,
             length_counter_halt: false,
             constant_volume_flag: false,
@@ -49,17 +49,36 @@ impl Square {
     }
 
     pub fn clock_envelope(&mut self) {
-        if self.start {
-            self.envelope -= 1;
-            self.start = false;
+        // When clocked by the frame counter, one of two actions occurs:
+        // if the start flag is clear, the divider is clocked,
+        if !self.start {
+            self.clock_divider();
         } else {
+            self.start = false; // otherwise the start flag is cleared,
+            self.decay_counter = 15; // the decay level counter is loaded with 15,
+            self.divider = self.envelope; // and the divider's period is immediately reloaded
+        }
+    }
 
+    fn clock_divider(&mut self) {
+        // When the divider is clocked while at 0, it is loaded with V and clocks the decay level counter.
+        if self.divider == 0 {
+            self.divider = self.envelope;
+            // Then one of two actions occurs: If the counter is non-zero, it is decremented,
+            if self.decay_counter != 0 {
+                self.decay_counter -= 1;
+            } else if self.length_counter_halt {
+                // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
+                self.decay_counter = 15;
+            }
+        } else {
+            self.divider -= 1;
         }
     }
 
     // $4000/$4004
     pub fn duty(&mut self, value: u8) {
-        self.duty_cycle = duty_cycle_sequences[(value >> 6) as usize];
+        self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
         if self.constant_volume_flag {
