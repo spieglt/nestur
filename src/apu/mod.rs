@@ -35,6 +35,7 @@ pub struct Apu {
     tnd_table: Vec<f32>,
 
     frame_counter: u8,
+    current_frame: u8,
     mode: u8,
     interrupt_inhibit: u8,
     frame_interrupt: bool,
@@ -65,6 +66,7 @@ impl Apu {
             tnd_table: tnd_table,
 
             frame_counter: 0,
+            current_frame: 0,
             mode: 0,
             interrupt_inhibit: 0,
             frame_interrupt: false,
@@ -100,7 +102,7 @@ impl Apu {
             0x4014 => (),
             0x4015 => self.control(value),
             0x4016 => (),
-            0x4017 => self.step_frame_counter(value),
+            0x4017 => self.set_frame_counter(value),
             _ => panic!("bad address written: 0x{:X}", address),
         }
     }
@@ -116,7 +118,7 @@ impl Apu {
     // - - - f    - - - - -    IRQ (if bit 6 is clear)
     // - l - l    - l - - l    Length counter and sweep
     // e e e e    e e e - e    Envelope and linear counter
-    fn step_frame_counter(&mut self, value: u8) {
+    fn set_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
         if value & (1<<7) == 0 { 
             self.mode = 0;
@@ -130,6 +132,27 @@ impl Apu {
             self.interrupt_inhibit = 0;
         }
 
+    }
+
+    fn step_frame_counter(&mut self) {
+        match self.frame_counter {
+            4 => {
+                self.square1.clock_envelope();
+                self.square2.clock_envelope();
+                self.triangle.clock_linear_counter();
+                self.noise.clock_envelope();
+                if self.current_frame == 1 || self.current_frame == 3 {
+
+                }
+                if self.current_frame == 3 {
+                    self.issue_irq();
+                }
+            },
+            5 => {
+
+            },
+            _ => panic!("invalid frame counter value"),
+        }
     }
 
     fn control(&mut self, value: u8) {
@@ -212,5 +235,9 @@ impl Apu {
         self.frame_interrupt = false;
         // TODO: If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
         val
+    }
+
+    fn issue_irq(&mut self) {
+
     }
 }
