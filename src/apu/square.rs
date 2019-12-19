@@ -59,6 +59,10 @@ impl Square {
             self.divider = self.envelope; // and the divider's period is immediately reloaded
         }
     }
+    
+    pub fn clock_length_counter(&mut self) {
+        
+    }
 
     fn clock_divider(&mut self) {
         // When the divider is clocked while at 0, it is loaded with V and clocks the decay level counter.

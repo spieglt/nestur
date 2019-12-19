@@ -43,6 +43,10 @@ impl Noise {
         
     }
 
+    pub fn clock_length_counter(&mut self) {
+        
+    }
+
     pub fn loop_noise(&mut self, value: u8) {
         
     }

@@ -24,6 +24,9 @@ use dmc::DMC;
 // No. Don't have to be concerned about the audio device, that's solved by the buffer, and the 44100 samples get fed in batches of 4096 from the large buffer,
 // when the device needs them, which is accomplished just by calling .resume() before the main loop starts. So a large buffer really should allow for the 60Hz sleep lock.
 
+// We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
+// clocks 894,866.5 times per second. 894,866.5/44,100=20.29 APU clocks per audio sample.
+
 pub struct Apu {
     square1:  Square,
     square2:  Square,
@@ -39,6 +42,8 @@ pub struct Apu {
     mode: u8,
     interrupt_inhibit: u8,
     frame_interrupt: bool,
+    cycle: usize,
+    remainder: f64, // keep sample at 44100Hz  
 }
 
 struct Envelope {
@@ -47,9 +52,7 @@ struct Envelope {
     delay_level_counter: usize,
 }
 
-struct FrameCounter {
-
-}
+const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
 
 impl Apu {
     pub fn new() -> Self {
@@ -70,11 +73,29 @@ impl Apu {
             mode: 0,
             interrupt_inhibit: 0,
             frame_interrupt: false,
+            cycle: 0,
+            remainder: 0,
         }
     }
 
     pub fn step(&mut self) {
+        if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
+            || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
+            self.clock_frame_counter();
+        }
 
+        // push sample to buffer
+        if self.remainder > 894_866.5/44_100 { // APU frequency over sample frequency
+            self.sample_audio();
+            self.remainder -= 894_866.5/44_100;
+        }
+        self.remainder += 1;
+
+        self.cycle += 1;
+        if (self.frame_counter == 4 && self.cycle == 14915)
+            || (self.frame_counter == 5 && self.cycle == 18641) {
+            self.cycle = 0;
+        }
     }
 
     pub fn write_reg(&mut self, address: usize, value: u8) {
@@ -134,24 +155,30 @@ impl Apu {
 
     }
 
-    fn step_frame_counter(&mut self) {
-        match self.frame_counter {
-            4 => {
-                self.square1.clock_envelope();
-                self.square2.clock_envelope();
-                self.triangle.clock_linear_counter();
-                self.noise.clock_envelope();
-                if self.current_frame == 1 || self.current_frame == 3 {
-
-                }
-                if self.current_frame == 3 {
-                    self.issue_irq();
-                }
-            },
-            5 => {
-
-            },
-            _ => panic!("invalid frame counter value"),
+    fn clock_frame_counter(&mut self) {
+        if !(self.frame_counter == 5 && self.current_frame == 4) {
+            // step envelopes
+            self.square1.clock_envelope();
+            self.square2.clock_envelope();
+            self.triangle.clock_linear_counter();
+            self.noise.clock_envelope();
+        }
+        if (self.current_frame == 1)
+            || (self.frame_counter == 4 && self.current_frame == 3)
+            || (self.frame_counter == 5 && self.current_frame == 4) {
+            // step length counters and sweep units
+            self.square1.clock_length_counter();
+            self.square2.clock_length_counter();
+            self.triangle.clock_length_counter();
+            self.noise.clock_length_counter();
+        }
+        if self.frame_counter == 4 && self.current_frame == 3 {
+            self.issue_irq();
+        }
+        // advance counter
+        self.current_frame += 1;
+        if self.current_frame == self.frame_counter {
+            self.current_frame = 0;
         }
     }
 
