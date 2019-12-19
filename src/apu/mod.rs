@@ -25,7 +25,10 @@ use dmc::DMC;
 // when the device needs them, which is accomplished just by calling .resume() before the main loop starts. So a large buffer really should allow for the 60Hz sleep lock.
 
 // We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
-// clocks 894,866.5 times per second. 894,866.5/44,100=20.29 APU clocks per audio sample.
+// clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
+
+// TODO: APU runs every other CPU clock, not step. Need to tear APU out of CPU (or at least step it from outside CPU's step function)
+// and connect it to audio module.
 
 pub struct Apu {
     square1:  Square,
@@ -85,9 +88,9 @@ impl Apu {
         }
 
         // push sample to buffer
-        if self.remainder > 894_866.5/44_100 { // APU frequency over sample frequency
+        if self.remainder > 894_886.5/44_100 { // APU frequency over sample frequency
             self.sample_audio();
-            self.remainder -= 894_866.5/44_100;
+            self.remainder -= 894_886.5/44_100;
         }
         self.remainder += 1;
 
