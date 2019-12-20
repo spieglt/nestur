@@ -66,9 +66,9 @@ fn main() -> Result<(), String> {
         }
         for _ in 0..apu_cycles {
             match cpu.apu.clock() {
-                Some(sample) => audio_device.speaker.append(sample),
-                None => (),
-            }
+                Some(sample) => audio_device.queue(&wav),
+                None => false,
+            };
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
