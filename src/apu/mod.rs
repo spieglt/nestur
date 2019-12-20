@@ -81,7 +81,7 @@ impl Apu {
         }
     }
 
-    pub fn step(&mut self) -> Option<f32> {
+    pub fn clock(&mut self) -> Option<f32> {
         let mut sample = None;
 
         if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))

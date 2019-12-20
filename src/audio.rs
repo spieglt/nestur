@@ -3,7 +3,7 @@ extern crate sdl2;
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
 
 pub struct Speaker {
-    buffer: Vec<f32>,
+    buffer: [f32; 4096*4],
     head: usize,
 }
 
@@ -13,7 +13,14 @@ impl AudioCallback for Speaker {
         for (i, x) in out.iter_mut().enumerate() {
             *x = self.buffer[i+self.head]; // get data from apu
         }
-        self.buffer = self.buffer[4096..].to_vec();
+        self.head = (self.head + 4096) % (4096*4)
+    }
+}
+
+impl Speaker {
+    pub fn append(&mut self, sample: f32) {
+        self.buffer[self.head] = sample;
+        self.head = (self.head + 1) % (4096*4);
     }
 }
 
@@ -31,6 +38,6 @@ pub fn initialize(context: &sdl2::Sdl) -> Result<sdl2::audio::AudioDevice<Speake
         println!("{:?}", spec);
 
         // initialize the audio callback
-        Speaker{buffer: vec![], head: 0}
+        Speaker{buffer: [0_f32; 4096*4], head: 0}
     })
 }

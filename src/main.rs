@@ -35,8 +35,9 @@ fn main() -> Result<(), String> {
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
     // Set up audio
-    let mut speaker = audio::initialize(&sdl_context).expect("Could not create audio device");
+    let mut audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
     let mut half_cycle = false;
+    audio_device.resume();
 
     // Initialize hardware components
     let cart = Cartridge::new();
@@ -64,7 +65,10 @@ fn main() -> Result<(), String> {
             }
         }
         for _ in 0..apu_cycles {
-            cpu.apu.step();
+            match cpu.apu.clock() {
+                Some(sample) => audio_device.speaker.append(sample),
+                None => (),
+            }
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
