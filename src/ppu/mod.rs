@@ -143,7 +143,7 @@ impl Ppu {
         }
     }
 
-    pub fn step(&mut self) -> (Option<(usize, usize, (u8, u8, u8))>, bool) {
+    pub fn clock(&mut self) -> (Option<(usize, usize, (u8, u8, u8))>, bool) {
         if self.nmi_delay > 0 {
             self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {

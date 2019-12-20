@@ -123,7 +123,7 @@ impl super::Cpu {
         self.push((self.PC & 0xFF) as u8); // push low byte
         self.push(self.P | 0b00110000); // push status register with break bits set
         self.P |= INTERRUPT_DISABLE_FLAG; // set interrupt disable flag
-        self.PC = ((self.read(IRQ_VECTOR + 1) as usize) << 8) // set program counter to IRQ/BRK vector, taking high _byte
+        self.PC = ((self.read(IRQ_VECTOR + 1) as usize) << 8) // set program counter to IRQ/BRK vector, taking high byte
             + (self.read(IRQ_VECTOR) as usize); // and low byte
         self.clock += 5; // total of 7 cycles, 2 come from implied()
     }
@@ -527,8 +527,18 @@ impl super::Cpu {
         self.push((self.PC & 0xFF) as u8); // push low byte
         self.push(self.P | 0b00110000); // push status register with break bits set
         self.P |= INTERRUPT_DISABLE_FLAG; // set interrupt disable flag
-        self.PC = ((self.read(NMI_VECTOR + 1) as usize) << 8) // set program counter to IRQ/BRK vector, taking high _byte
+        self.PC = ((self.read(NMI_VECTOR + 1) as usize) << 8) // set program counter to NMI vector, taking high byte
             + (self.read(NMI_VECTOR) as usize); // and low byte
+        self.clock += 7;
+    }
+
+    pub fn irq(&mut self) {
+        self.push((self.PC >> 8) as u8); // push high byte
+        self.push((self.PC & 0xFF) as u8); // push low byte
+        self.push(self.P & 0b11001111); // push status register with break bits cleared
+        self.P |= INTERRUPT_DISABLE_FLAG; // set interrupt disable flag
+        self.PC = ((self.read(IRQ_VECTOR + 1) as usize) << 8) // set program counter to IRQ/BRK vector, taking high byte
+            + (self.read(IRQ_VECTOR) as usize); // and low byte
         self.clock += 7;
     }
 

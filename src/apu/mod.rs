@@ -27,9 +27,6 @@ use dmc::DMC;
 // We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
 // clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
 
-// TODO: APU runs every other CPU clock, not step. Need to tear APU out of CPU (or at least step it from outside CPU's step function)
-// and connect it to audio module.
-
 pub struct Apu {
     square1:  Square,
     square2:  Square,
@@ -43,10 +40,11 @@ pub struct Apu {
     frame_counter: u8,
     current_frame: u8,
     mode: u8,
-    interrupt_inhibit: u8,
+    interrupt_inhibit: bool,
     frame_interrupt: bool,
     cycle: usize,
-    remainder: f64, // keep sample at 44100Hz  
+    remainder: f32, // keep sample at 44100Hz
+    pub trigger_irq: bool,
 }
 
 struct Envelope {
@@ -56,6 +54,7 @@ struct Envelope {
 }
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
+const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency
 
 impl Apu {
     pub fn new() -> Self {
@@ -74,31 +73,35 @@ impl Apu {
             frame_counter: 0,
             current_frame: 0,
             mode: 0,
-            interrupt_inhibit: 0,
+            interrupt_inhibit: false,
             frame_interrupt: false,
             cycle: 0,
-            remainder: 0,
+            remainder: 0_f32,
+            trigger_irq: false,
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> Option<f32> {
+        let mut sample = None;
+
         if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
             || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
             self.clock_frame_counter();
         }
-
-        // push sample to buffer
-        if self.remainder > 894_886.5/44_100 { // APU frequency over sample frequency
-            self.sample_audio();
-            self.remainder -= 894_886.5/44_100;
+        if self.remainder > CYCLES_PER_SAMPLE { 
+            // send sample to buffer
+            sample = Some(self.mix());
+            self.remainder -= CYCLES_PER_SAMPLE;
         }
-        self.remainder += 1;
+        self.remainder += 1.0;
 
         self.cycle += 1;
         if (self.frame_counter == 4 && self.cycle == 14915)
             || (self.frame_counter == 5 && self.cycle == 18641) {
             self.cycle = 0;
         }
+
+        sample
     }
 
     pub fn write_reg(&mut self, address: usize, value: u8) {
@@ -137,11 +140,6 @@ impl Apu {
         square_out + tnd_out
     }
 
-    //     mode 0:    mode 1:       function
-    // ---------  -----------  -----------------------------
-    // - - - f    - - - - -    IRQ (if bit 6 is clear)
-    // - l - l    - l - - l    Length counter and sweep
-    // e e e e    e e e - e    Envelope and linear counter
     fn set_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
         if value & (1<<7) == 0 { 
@@ -153,13 +151,18 @@ impl Apu {
         }
         // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
         if value & (1<<6) != 0 {
-            self.interrupt_inhibit = 0;
+            self.interrupt_inhibit = false;
         }
 
     }
 
+    //     mode 0:    mode 1:       function
+    // ---------  -----------  -----------------------------
+    // - - - f    - - - - -    IRQ (if bit 6 is clear)
+    // - l - l    - l - - l    Length counter and sweep
+    // e e e e    e e e - e    Envelope and linear counter
     fn clock_frame_counter(&mut self) {
-        if !(self.frame_counter == 5 && self.current_frame == 4) {
+        if !(self.frame_counter == 5 && self.current_frame == 3) {
             // step envelopes
             self.square1.clock_envelope();
             self.square2.clock_envelope();
@@ -175,8 +178,8 @@ impl Apu {
             self.triangle.clock_length_counter();
             self.noise.clock_length_counter();
         }
-        if self.frame_counter == 4 && self.current_frame == 3 {
-            self.issue_irq();
+        if self.frame_counter == 4 && self.current_frame == 3 && !self.interrupt_inhibit {
+            self.trigger_irq = true;
         }
         // advance counter
         self.current_frame += 1;
@@ -267,7 +270,4 @@ impl Apu {
         val
     }
 
-    fn issue_irq(&mut self) {
-
-    }
 }

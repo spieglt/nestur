@@ -6,6 +6,7 @@ mod apu;
 mod cartridge;
 mod input;
 mod screen;
+mod audio;
 
 use cpu::Cpu;
 use ppu::Ppu;
@@ -13,6 +14,7 @@ use apu::Apu;
 use cartridge::Cartridge;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
+use audio::initialize;
 
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
@@ -32,6 +34,10 @@ fn main() -> Result<(), String> {
     let byte_height = 240 * screen::SCALE_FACTOR; // NES image is 240 pixels tall, multiply by scale factor for total number of rows needed
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
+    // Set up audio
+    let mut speaker = audio::initialize(&sdl_context).expect("Could not create audio device");
+    let mut half_cycle = false;
+
     // Initialize hardware components
     let cart = Cartridge::new();
     let ppu = Ppu::new(&cart);
@@ -45,11 +51,24 @@ fn main() -> Result<(), String> {
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
-        // perform 1 cpu instruction, getting back number of clock cycles it took
-        let num_cycles = cpu.step();
-        // maintain ratio of 3 ppu cycles for 1 cpu step
-        for _ in 0..num_cycles * 3 {
-            let (pixel, end_of_frame) = cpu.ppu.step();
+        // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
+        let cpu_cycles = cpu.step();
+        // clock APU every other CPU cycle
+        let mut apu_cycles = cpu_cycles / 2;
+        if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
+            if half_cycle {        // and we have a half-cycle stored
+                apu_cycles += 1;   // use it
+                half_cycle = false;
+            } else {
+                half_cycle = true; // or save it for next odd cpu step
+            }
+        }
+        for _ in 0..apu_cycles {
+            cpu.apu.step();
+        }
+        // clock PPU three times for every CPU cycle
+        for _ in 0..cpu_cycles * 3 {
+            let (pixel, end_of_frame) = cpu.ppu.clock();
             match pixel {
                 Some((x, y, color)) => draw_pixel(&mut screen_buffer, x, y, color),
                 None => (),

@@ -77,8 +77,7 @@ pub struct Cpu {
     pub ppu: super::Ppu,
 
     // apu
-    apu: super::Apu,
-    even: bool, // keep track of whether we're on an even cycle for apu
+    pub apu: super::Apu,
 
     // controller
     pub strobe: u8,
@@ -100,7 +99,6 @@ impl Cpu {
             mapper_func: cart.cpu_mapper_func,
             ppu: ppu,
             apu: apu,
-            even: true,
             strobe: 0,
             button_states: 0,
             button_number: 0,
@@ -148,8 +146,6 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> u64 {
-        // for apu
-        self.even = if self.even {false} else {true};
         
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
@@ -157,10 +153,15 @@ impl Cpu {
             return 1;
         }
 
+        // handle interrupts
         if self.ppu.trigger_nmi {
             self.nmi();
         }
         self.ppu.trigger_nmi = false;
+        if self.apu.trigger_irq && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
+            self.irq();
+        }
+        self.apu.trigger_irq = false;
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
@@ -186,8 +187,6 @@ impl Cpu {
         self.advance_pc(mode);
         // look up instruction in table and execute
         self.opcode_table[opcode](self, address, mode);
-        // maintain 1 apu cycle per 2 cpu cycles
-        self.even = if self.even { self.apu.step(); false } else { true };
         // return how many cycles it took
         self.clock - clock
     }
@@ -195,14 +194,14 @@ impl Cpu {
     // memory interface
     fn read(&mut self, address: usize) -> u8 {
         let val = match address {
-            0x0000...0x1FFF => self.mem[address % 0x0800],
-            0x2000...0x3FFF => self.read_ppu_reg(address % 8),
+            0x0000..=0x1FFF => self.mem[address % 0x0800],
+            0x2000..=0x3FFF => self.read_ppu_reg(address % 8),
             0x4014          => self.read_ppu_reg(8),
             0x4015          => self.apu.read_status(),
             0x4016          => self.read_controller(),
-            0x4000...0x4017 => 0, // can't read from these APU registers
-            0x4018...0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020...0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
+            0x4000..=0x4017 => 0, // can't read from these APU registers
+            0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
+            0x4020..=0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
                 *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads.
             },
             _ => panic!("invalid read from 0x{:02x}", address),
@@ -213,13 +212,13 @@ impl Cpu {
     // memory interface
     fn write(&mut self, address: usize, val: u8) {
         match address {
-            0x0000...0x1FFF => self.mem[address % 0x0800] = val,
-            0x2000...0x3FFF => self.write_ppu_reg(address % 8, val),
+            0x0000..=0x1FFF => self.mem[address % 0x0800] = val,
+            0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),
             0x4014          => self.write_ppu_reg(8, val),
             0x4016          => self.write_controller(val),
-            0x4000...0x4017 => self.apu.write_reg(address, val), // APU stuff
-            0x4018...0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020...0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
+            0x4000..=0x4017 => self.apu.write_reg(address, val), // APU stuff
+            0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
+            0x4020..=0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
                 match (self.mapper_func)(self, address, true) {
                     Some(loc) => *loc = val,
                     None => (),
