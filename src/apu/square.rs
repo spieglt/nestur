@@ -7,58 +7,61 @@ const DUTY_CYCLE_SEQUENCES: [[u8; 8]; 4] = [
 
 pub struct Square {
     pub sample: u16,
-    divider: u16,
     pub enabled: bool,
 
     duty_cycle: [u8; 8],
     duty_counter: usize,
     
     envelope: u16,
-    start: bool,
+    divider: u16,
     decay_counter: u16,
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
+    start: bool,
 
     length_counter_halt: bool, // (this bit is also the envelope's loop flag)
     pub length_counter: u8,
 
     timer: u16,
     timer_period: u16,
-    sweep: u8,
-    sweep_divider: u8,
+    sweep_divider: u8, // Period, P
     shift_count: u8,
-    sweep_adder_overflow: bool,
+    sweep_counter: u8,
     sweep_enabled: bool,
     sweep_negate: bool,
     sweep_reload: bool,
+
+    second_channel: bool, // hack to detect timing difference in clock_sweep()
 }
 
 impl Square {
-    pub fn new() -> Self {
+    pub fn new(second_channel: bool) -> Self {
         Square {
             sample: 0,
-            divider: 0,
             enabled: false,
 
             duty_cycle: DUTY_CYCLE_SEQUENCES[0],
             duty_counter: 0,
 
             envelope: 0,
-            start: false,
+            divider: 0,
             decay_counter: 0,
             constant_volume_flag: false,
+            start: false,
 
             timer: 0,
             timer_period: 0,
-            sweep: 0,
             sweep_divider: 0,
             shift_count: 0,
-            sweep_adder_overflow: false,
+            sweep_period: 0,
+            sweep_counter: 0,
             sweep_enabled: false,
             sweep_negate: false,
             sweep_reload: false,
 
             length_counter: 0,
             length_counter_halt: false,
+
+            second_channel: second_channel,
         }
     }
 
@@ -74,7 +77,7 @@ impl Square {
         // Update volume for this channel
         // The mixer receives the current envelope volume except when
         self.sample = if self.duty_cycle[self.duty_counter] == 0 // The sequencer output is zero, or
-                || self.sweep_adder_overflow // overflow from the sweep unit's adder is silencing the channel,
+                || self.sweep_period > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
                 || self.length_counter == 0 // the length counter is zero, or
                 || self.timer < 8 { // the timer has a value less than eight.
                 0
@@ -116,7 +119,25 @@ impl Square {
     }
 
     pub fn clock_sweep(&mut self) {
+        // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
+        if self.sweep_counter == 0 {
+            self.sweep_enabled == true;
+        }
+    }
 
+    fn adjust_sweep(&mut self) {
+        let change = self.timer_period >> self.shift_count;
+        if self.sweep_negate {
+            self.timer_period -= change;
+            if self.second_channel {
+                self.timer_period -= 1;
+            }
+        } else {
+            self.timer_period += change;
+        }
+        if self.sweep_counter == 0 {
+            self.sweep_enabled = true;
+        }
     }
 
     // $4000/$4004
@@ -125,24 +146,25 @@ impl Square {
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
-        if self.constant_volume_flag {
-            self.envelope = value as u16 & 0b1111;
+        self.envelope = if self.constant_volume_flag {
+            value as u16 & 0b1111
         } else {
-            self.envelope = self.decay_counter;
-        }
+            self.decay_counter
+        };
     }
 
     // $4001/$4005
     pub fn write_sweep(&mut self, value: u8) {
         self.sweep_enabled = value >> 7 == 1;
-        self.sweep_divider = value >> 4 & 0b111;
+        self.sweep_divider = ((value >> 4) & 0b111) + 1;
         self.sweep_negate = value & 0b1000 != 0;
         self.shift_count = value & 0b111;
+        self.sweep_reload = true;
     }
 
     // $4002/$4006
     pub fn write_timer_low(&mut self, value: u8) {
-        self.timer &= 0b11111111_00000000;
+        self.timer &= 0b00000111_00000000;
         self.timer |= value as u16;
     }
 

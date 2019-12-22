@@ -63,8 +63,8 @@ impl Apu {
         let square_table = (0..31).map(|x| 95.52/(8128.0 / x as f32) + 100.0).collect();
         let tnd_table = (0..203).map(|x| 163.67/(24329.0 / x as f32) + 100.0).collect();
         Apu {
-            square1:    Square::new(),
-            square2:    Square::new(),
+            square1:    Square::new(false),
+            square2:    Square::new(true),
             triangle: Triangle::new(),
             noise:       Noise::new(),
             dmc:           DMC::new(),
@@ -175,6 +175,8 @@ impl Apu {
             || (self.frame_counter == 4 && self.current_frame == 3)
             || (self.frame_counter == 5 && self.current_frame == 4) {
             // step length counters and sweep units
+            self.square1.clock_sweep();
+            self.square2.clock_sweep();
             self.square1.clock_length_counter();
             self.square2.clock_length_counter();
             self.triangle.clock_length_counter();
