@@ -7,45 +7,80 @@ const DUTY_CYCLE_SEQUENCES: [[u8; 8]; 4] = [
 
 pub struct Square {
     pub sample: u16,
-    duty_cycle: [u8; 8],
-    duty_counter: u8,
-    length_counter_halt: bool, // (this bit is also the envelope's loop flag)
-    constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    timer: u16,
-    pub length_counter: u8,
-    envelope: u8,
-    sweep: u8,
+    divider: u16,
     pub enabled: bool,
-    decay_counter: u8,
+
+    duty_cycle: [u8; 8],
+    duty_counter: usize,
+    
+    envelope: u16,
     start: bool,
-    divider: u8,
+    decay_counter: u16,
+    constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
+
+    length_counter_halt: bool, // (this bit is also the envelope's loop flag)
+    pub length_counter: u8,
+
+    timer: u16,
+    timer_period: u16,
+    sweep: u8,
+    sweep_divider: u8,
+    shift_count: u8,
+    sweep_adder_overflow: bool,
+    sweep_enabled: bool,
+    sweep_negate: bool,
+    sweep_reload: bool,
 }
 
 impl Square {
     pub fn new() -> Self {
         Square {
+            sample: 0,
+            divider: 0,
+            enabled: false,
+
             duty_cycle: DUTY_CYCLE_SEQUENCES[0],
             duty_counter: 0,
-            length_counter_halt: false,
-            constant_volume_flag: false,
-            timer: 0,
-            length_counter: 0,
+
             envelope: 0,
-            sweep: 0,
-            sample: 0,
-            enabled: false,
-            decay_counter: 0,
             start: false,
-            divider: 0,
+            decay_counter: 0,
+            constant_volume_flag: false,
+
+            timer: 0,
+            timer_period: 0,
+            sweep: 0,
+            sweep_divider: 0,
+            shift_count: 0,
+            sweep_adder_overflow: false,
+            sweep_enabled: false,
+            sweep_negate: false,
+            sweep_reload: false,
+
+            length_counter: 0,
+            length_counter_halt: false,
         }
     }
 
     pub fn clock(&mut self) {
-
-    }
-
-    pub fn clock_frame_counter(&mut self) {
-
+        // The sequencer is clocked by an 11-bit timer. Given the timer value t = HHHLLLLLLLL formed by timer high and timer low, this timer is updated every APU cycle
+        //  (i.e., every second CPU cycle), and counts t, t-1, ..., 0, t, t-1, ..., clocking the waveform generator when it goes from 0 to t.
+        if self.timer == 0 {
+            self.timer = self.timer_period;
+            self.duty_counter = (self.duty_counter + 1) % 8;
+        } else {
+            self.timer -= 1;
+        }
+        // Update volume for this channel
+        // The mixer receives the current envelope volume except when
+        self.sample = if self.duty_cycle[self.duty_counter] == 0 // The sequencer output is zero, or
+                || self.sweep_adder_overflow // overflow from the sweep unit's adder is silencing the channel,
+                || self.length_counter == 0 // the length counter is zero, or
+                || self.timer < 8 { // the timer has a value less than eight.
+                0
+            } else {
+                self.decay_counter
+            };
     }
 
     pub fn clock_envelope(&mut self) {
@@ -80,50 +115,46 @@ impl Square {
         }
     }
 
+    pub fn clock_sweep(&mut self) {
+
+    }
+
     // $4000/$4004
-    pub fn duty(&mut self, value: u8) {
+    pub fn write_duty(&mut self, value: u8) {
+        // TODO: The duty cycle is changed (see table below), but the sequencer's current position isn't affected. 
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
         if self.constant_volume_flag {
-            self.envelope = value & 0b1111;
+            self.envelope = value as u16 & 0b1111;
         } else {
             self.envelope = self.decay_counter;
         }
     }
 
     // $4001/$4005
-    pub fn sweep(&mut self, value: u8) {
-        
+    pub fn write_sweep(&mut self, value: u8) {
+        self.sweep_enabled = value >> 7 == 1;
+        self.sweep_divider = value >> 4 & 0b111;
+        self.sweep_negate = value & 0b1000 != 0;
+        self.shift_count = value & 0b111;
     }
 
     // $4002/$4006
-    pub fn timer_low(&mut self, value: u8) {
-
+    pub fn write_timer_low(&mut self, value: u8) {
+        self.timer &= 0b11111111_00000000;
+        self.timer |= value as u16;
     }
 
     // $4003/$4007
-    pub fn timer_high(&mut self, value: u8) {
-        
+    pub fn write_timer_high(&mut self, value: u8) {
+        // LLLL.Lttt 	Pulse channel 1 length counter load and timer (write)
+        self.length_counter = value >> 3;
+        let timer_high = value as u16 & 0b0000_0111;
+        self.timer &= 0b11111000_11111111; // mask off high 3 bits of 11-bit timer
+        self.timer |= timer_high << 8; // apply high timer bits in their place
+        // The sequencer is immediately restarted at the first value of the current sequence. The envelope is also restarted. The period divider is not reset.
+        self.duty_counter = 0;
+        self.start = true;
     }
-}
-
-struct EnvelopeGenerator {
-
-}
-
-struct SweepUnit {
-
-}
-
-struct Timer {
-
-}
-
-struct Sequencer {
-
-}
-
-struct LengthCounter {
-
 }

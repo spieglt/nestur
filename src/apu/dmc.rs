@@ -18,7 +18,7 @@ impl DMC {
     }
 
     
-    pub fn control(&mut self, value: u8) {
+    pub fn write_control(&mut self, value: u8) {
         
     }
     
@@ -26,11 +26,11 @@ impl DMC {
         
     }
     
-    pub fn sample_address(&mut self, value: u8) {
+    pub fn write_sample_address(&mut self, value: u8) {
         
     }
     
-    pub fn sample_length(&mut self, value: u8) {
+    pub fn write_sample_length(&mut self, value: u8) {
         
     }
 }

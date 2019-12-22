@@ -27,6 +27,8 @@ use dmc::DMC;
 // We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
 // clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
 
+// TODO: organize APU structs
+
 pub struct Apu {
     square1:  Square,
     square2:  Square,
@@ -54,7 +56,7 @@ struct Envelope {
 }
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency
+const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
 
 impl Apu {
     pub fn new() -> Self {
@@ -106,28 +108,28 @@ impl Apu {
 
     pub fn write_reg(&mut self, address: usize, value: u8) {
         match address {
-            0x4000 => self.square1.duty(value),
-            0x4001 => self.square1.sweep(value),
-            0x4002 => self.square1.timer_low(value),
-            0x4003 => self.square1.timer_high(value),
-            0x4004 => self.square2.duty(value),
-            0x4005 => self.square2.sweep(value),
-            0x4006 => self.square2.timer_low(value),
-            0x4007 => self.square2.timer_high(value),
-            0x4008 => self.triangle.counter(value),
+            0x4000 => self.square1.write_duty(value),
+            0x4001 => self.square1.write_sweep(value),
+            0x4002 => self.square1.write_timer_low(value),
+            0x4003 => self.square1.write_timer_high(value),
+            0x4004 => self.square2.write_duty(value),
+            0x4005 => self.square2.write_sweep(value),
+            0x4006 => self.square2.write_timer_low(value),
+            0x4007 => self.square2.write_timer_high(value),
+            0x4008 => self.triangle.write_counter(value),
             0x4009 => (),
-            0x400A => self.triangle.timer_low(value),
-            0x400B => self.triangle.timer_high(value),
-            0x400C => self.noise.envelope(value),
+            0x400A => self.triangle.write_timer_low(value),
+            0x400B => self.triangle.write_timer_high(value),
+            0x400C => self.noise.write_envelope(value),
             0x400D => (),
-            0x400E => self.noise.loop_noise(value),
-            0x400F => self.noise.load_length_counter(value),
-            0x4010 => self.dmc.control(value),
+            0x400E => self.noise.write_loop_noise(value),
+            0x400F => self.noise.write_length_counter(value),
+            0x4010 => self.dmc.write_control(value),
             0x4011 => self.dmc.direct_load(value),
-            0x4012 => self.dmc.sample_address(value),
-            0x4013 => self.dmc.sample_length(value),
+            0x4012 => self.dmc.write_sample_address(value),
+            0x4013 => self.dmc.write_sample_length(value),
             0x4014 => (),
-            0x4015 => self.control(value),
+            0x4015 => self.write_control(value),
             0x4016 => (),
             0x4017 => self.set_frame_counter(value),
             _ => panic!("bad address written: 0x{:X}", address),
@@ -188,7 +190,7 @@ impl Apu {
         }
     }
 
-    fn control(&mut self, value: u8) {
+    fn write_control(&mut self, value: u8) {
         // Writing to this register clears the DMC interrupt flag.
         self.dmc.interrupt = false;
         // Writing a zero to any of the channel enable bits will silence that channel and immediately set its length counter to 0.

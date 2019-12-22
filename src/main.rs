@@ -37,6 +37,7 @@ fn main() -> Result<(), String> {
     // Set up audio
     let mut audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
     let mut half_cycle = false;
+    let mut audio_buffer = Vec::<f32>::new();
     audio_device.resume();
 
     // Initialize hardware components
@@ -49,6 +50,7 @@ fn main() -> Result<(), String> {
     let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
+    let mut sps = 0;
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -66,9 +68,13 @@ fn main() -> Result<(), String> {
         }
         for _ in 0..apu_cycles {
             match cpu.apu.clock() {
-                Some(sample) => audio_device.queue(&wav),
-                None => false,
+                Some(sample) => {sps += 1; audio_buffer.push(sample)},
+                None => (),
             };
+        }
+        if audio_buffer.len() == 44_100 {
+            audio_device.queue(&audio_buffer);
+            audio_buffer = vec![];
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
@@ -107,6 +113,10 @@ fn main() -> Result<(), String> {
             println!("fps: {}", fps);
             fps = 0;
             fps_timer = now;
+
+            println!("samples per second: {}", sps);
+            sps = 0;
+
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();

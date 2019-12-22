@@ -35,7 +35,7 @@ impl Noise {
         self.linear_feedback_sr |= feedback << 14;
     }
 
-    pub fn envelope(&mut self, value: u8) {
+    pub fn write_envelope(&mut self, value: u8) {
         
     }
 
@@ -47,10 +47,10 @@ impl Noise {
         
     }
 
-    pub fn loop_noise(&mut self, value: u8) {
+    pub fn write_loop_noise(&mut self, value: u8) {
         
     }
-    pub fn load_length_counter(&mut self, value: u8) {
+    pub fn write_length_counter(&mut self, value: u8) {
         
     }
 }

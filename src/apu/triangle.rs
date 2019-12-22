@@ -20,15 +20,15 @@ impl Triangle {
         }
     }
 
-    pub fn timer_low(&mut self, value: u8) {
+    pub fn write_timer_low(&mut self, value: u8) {
 
     }
 
-    pub fn timer_high(&mut self, value: u8) {
+    pub fn write_timer_high(&mut self, value: u8) {
         
     }
 
-    pub fn counter(&mut self, value: u8) {
+    pub fn write_counter(&mut self, value: u8) {
         
     }
 
