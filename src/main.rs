@@ -73,6 +73,7 @@ fn main() -> Result<(), String> {
             };
         }
         if audio_buffer.len() == 44_100 {
+            println!("queueing: {:?}", &audio_buffer[..32]);
             audio_device.queue(&audio_buffer);
             audio_buffer = vec![];
         }

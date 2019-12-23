@@ -29,6 +29,13 @@ use dmc::DMC;
 
 // TODO: organize APU structs
 
+const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
+const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
+const LENGTH_COUNTER_TABLE: [u8; 32] = [
+    10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
+    12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
+];
+
 pub struct Apu {
     square1:  Square,
     square2:  Square,
@@ -41,22 +48,12 @@ pub struct Apu {
 
     frame_counter: u8,
     current_frame: u8,
-    mode: u8,
     interrupt_inhibit: bool,
     frame_interrupt: bool,
     cycle: usize,
     remainder: f32, // keep sample at 44100Hz
     pub trigger_irq: bool,
 }
-
-struct Envelope {
-    start_flag: bool,
-    divider: usize,
-    delay_level_counter: usize,
-}
-
-const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
 
 impl Apu {
     pub fn new() -> Self {
@@ -74,7 +71,6 @@ impl Apu {
 
             frame_counter: 0,
             current_frame: 0,
-            mode: 0,
             interrupt_inhibit: false,
             frame_interrupt: false,
             cycle: 0,
@@ -131,7 +127,7 @@ impl Apu {
             0x4014 => (),
             0x4015 => self.write_control(value),
             0x4016 => (),
-            0x4017 => self.set_frame_counter(value),
+            0x4017 => self.write_frame_counter(value),
             _ => panic!("bad address written: 0x{:X}", address),
         }
     }
@@ -139,23 +135,8 @@ impl Apu {
     fn mix(&self) -> f32 {
         let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
         let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
+        // println!("square: {}, tnd: {}", square_out, tnd_out);
         square_out + tnd_out
-    }
-
-    fn set_frame_counter(&mut self, value: u8) {
-        // 0 selects 4-step sequence, 1 selects 5-step sequence
-        if value & (1<<7) == 0 { 
-            self.mode = 0;
-            self.frame_counter = 4;
-        } else {
-            self.mode = 1;
-            self.frame_counter = 5;
-        }
-        // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
-        if value & (1<<6) != 0 {
-            self.interrupt_inhibit = false;
-        }
-
     }
 
     //     mode 0:    mode 1:       function
@@ -192,6 +173,7 @@ impl Apu {
         }
     }
 
+    // CPU writes to $4015
     fn write_control(&mut self, value: u8) {
         // Writing to this register clears the DMC interrupt flag.
         self.dmc.interrupt = false;
@@ -204,27 +186,21 @@ impl Apu {
         }
         if value & (1<<1) != 0 {
             self.square2.enabled = true;
-
         } else {
             self.square2.enabled = false;
             self.square2.length_counter = 0;
-
         }
         if value & (1<<2) != 0 {
             self.triangle.enabled = true;
-
         } else {
             self.triangle.enabled = false;
             self.triangle.length_counter = 0;
-
         }
         if value & (1<<3) != 0 {
             self.noise.enabled = true;
-
         } else {
             self.noise.enabled = false;
             self.noise.length_counter = 0;
-
         }
         if value & (1<<4) != 0 {
             self.dmc.enabled = true;
@@ -241,6 +217,7 @@ impl Apu {
         }
     }
 
+    // CPU reads from $4015
     pub fn read_status(&mut self) -> u8 {
         // IF-D NT21: 	DMC interrupt (I), frame interrupt (F), DMC active (D), length counter > 0 (N/T/2/1)
         let mut val = 0;
@@ -274,4 +251,27 @@ impl Apu {
         val
     }
 
+    // $4017
+    fn write_frame_counter(&mut self, value: u8) {
+        // 0 selects 4-step sequence, 1 selects 5-step sequence
+        self.frame_counter = if value & (1<<7) == 0 { 4 } else { 5 };
+        // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
+        if value & (1<<6) != 0 {
+            self.interrupt_inhibit = false;
+        }
+        // If the mode flag is set, then both "quarter frame" and "half frame" signals are also generated.
+        if self.frame_counter == 5 {
+            // Clock envelopes, length counters, and sweep units
+            self.square1.clock_envelope();
+            self.square1.clock_sweep();
+            self.square1.clock_length_counter();
+            self.square2.clock_envelope();
+            self.square2.clock_sweep();
+            self.square2.clock_length_counter();
+            self.triangle.clock_linear_counter();
+            self.triangle.clock_length_counter();
+            self.noise.clock_envelope();
+            self.noise.clock_length_counter();
+        }
+    }
 }
