@@ -83,6 +83,7 @@ impl Square {
             } else {
                 self.decay_counter
             };
+        println!("{}", self.sample);
     }
 
     pub fn clock_envelope(&mut self) {

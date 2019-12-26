@@ -68,12 +68,18 @@ fn main() -> Result<(), String> {
         }
         for _ in 0..apu_cycles {
             match cpu.apu.clock() {
-                Some(sample) => {sps += 1; audio_buffer.push(sample)},
+                Some(sample) => {
+                    sps += 1;
+                    // if sample != 0.0 {
+                    //     println!("sample {}", sample);
+                    // }
+                    audio_buffer.push(sample)
+                },
                 None => (),
             };
         }
         if audio_buffer.len() == 44_100 {
-            println!("queueing: {:?}", &audio_buffer[..32]);
+            // println!("queueing: {:?}", &audio_buffer[..32]);
             audio_device.queue(&audio_buffer);
             audio_buffer = vec![];
         }

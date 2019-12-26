@@ -17,6 +17,9 @@ impl DMC {
         }
     }
 
+    pub fn clock(&mut self) {
+        
+    }
     
     pub fn write_control(&mut self, value: u8) {
         

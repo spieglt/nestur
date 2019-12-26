@@ -57,8 +57,10 @@ pub struct Apu {
 
 impl Apu {
     pub fn new() -> Self {
-        let square_table = (0..31).map(|x| 95.52/(8128.0 / x as f32) + 100.0).collect();
-        let tnd_table = (0..203).map(|x| 163.67/(24329.0 / x as f32) + 100.0).collect();
+        let square_table = (0..31).map(|x| 95.52/((8128.0 / x as f32) + 100.0)).collect();
+        let tnd_table = (0..203).map(|x| 163.67/((24329.0 / x as f32) + 100.0)).collect();
+        println!("square_table: {:?}", square_table);
+        println!("tnd_table: {:?}", tnd_table);
         Apu {
             square1:    Square::new(false),
             square2:    Square::new(true),
@@ -81,6 +83,12 @@ impl Apu {
 
     pub fn clock(&mut self) -> Option<f32> {
         let mut sample = None;
+
+        self.square1.clock();
+        self.square2.clock();
+        self.triangle.clock();
+        self.noise.clock();
+        self.dmc.clock();
 
         if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
             || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {

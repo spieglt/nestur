@@ -32,6 +32,10 @@ impl Triangle {
         
     }
 
+    pub fn clock(&mut self) {
+        
+    }
+
     pub fn clock_linear_counter(&mut self) {
         
     }
