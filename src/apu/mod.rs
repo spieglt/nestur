@@ -30,7 +30,8 @@ use dmc::DMC;
 // TODO: organize APU structs
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
+// const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
+const CYCLES_PER_SAMPLE: f32 = 19.65;
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
@@ -111,6 +112,7 @@ impl Apu {
     }
 
     pub fn write_reg(&mut self, address: usize, value: u8) {
+        // println!("writing 0b{:08b} to 0x{:X}", value, address);
         match address {
             0x4000 => self.square1.write_duty(value),
             0x4001 => self.square1.write_sweep(value),

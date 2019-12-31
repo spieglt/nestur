@@ -75,7 +75,7 @@ impl Square {
         }
         // Update volume for this channel
         // The mixer receives the current envelope volume except when
-        self.sample = if self.duty_cycle[self.duty_counter] == 0 // The sequencer output is zero, or
+        self.sample = if self.duty_cycle[self.duty_counter] == 0 // the sequencer output is zero, or
             || self.sweep_divider > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
             || self.length_counter == 0 // the length counter is zero, or
             || self.timer < 8 { // the timer has a value less than eight.
@@ -83,7 +83,6 @@ impl Square {
             } else {
                 self.decay_counter
             };
-        println!("{}", self.sample);
     }
 
     pub fn clock_envelope(&mut self) {
@@ -101,7 +100,7 @@ impl Square {
     pub fn clock_length_counter(&mut self) {
         if !(self.length_counter == 0 || self.length_counter_halt) {
             self.length_counter -= 1;
-        }    
+        }
     }
 
     fn clock_envelope_divider(&mut self) {
@@ -136,7 +135,7 @@ impl Square {
         }
         // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
         if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer < 8 || self.sweep_divider > 0x7FF) {
-            self.adjust_sweep();
+            self.timer_period = self.sweep_divider;
         }
         // If the divider's counter is zero or the reload flag is true: The counter is set to P and the reload flag is cleared. Otherwise, the counter is decremented.
         if self.sweep_counter == 0 || self.sweep_reload {
@@ -147,13 +146,9 @@ impl Square {
         }
     }
 
-    fn adjust_sweep(&mut self) {
-        self.timer_period = self.sweep_divider;
-    }
-
     // $4000/$4004
     pub fn write_duty(&mut self, value: u8) {
-        // TODO: The duty cycle is changed (see table below), but the sequencer's current position isn't affected. 
+        // The duty cycle is changed (see table below), but the sequencer's current position isn't affected.
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
@@ -175,8 +170,8 @@ impl Square {
 
     // $4002/$4006
     pub fn write_timer_low(&mut self, value: u8) {
-        self.timer &= 0b00000111_00000000; // mask off everything but high 3 bits of 11-bit timer
-        self.timer |= value as u16; // apply low 8 bits
+        self.timer_period &= 0b00000111_00000000; // mask off everything but high 3 bits of 11-bit timer
+        self.timer_period |= value as u16; // apply low 8 bits
     }
 
     // $4003/$4007
@@ -186,8 +181,8 @@ impl Square {
             self.length_counter = super::LENGTH_COUNTER_TABLE[value as usize >> 3];
         }
         let timer_high = value as u16 & 0b0000_0111;
-        self.timer &= 0b11111000_11111111; // mask off high 3 bits of 11-bit timer
-        self.timer |= timer_high << 8; // apply high timer bits in their place
+        self.timer_period &= 0b11111000_11111111; // mask off high 3 bits of 11-bit timer
+        self.timer_period |= timer_high << 8; // apply high timer bits in their place
         // The sequencer is immediately restarted at the first value of the current sequence. The envelope is also restarted. The period divider is not reset.
         self.duty_counter = 0;
         self.start = true;

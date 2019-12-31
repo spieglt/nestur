@@ -37,7 +37,6 @@ fn main() -> Result<(), String> {
     // Set up audio
     let mut audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
     let mut half_cycle = false;
-    let mut audio_buffer = Vec::<f32>::new();
     audio_device.resume();
 
     // Initialize hardware components
@@ -70,18 +69,10 @@ fn main() -> Result<(), String> {
             match cpu.apu.clock() {
                 Some(sample) => {
                     sps += 1;
-                    // if sample != 0.0 {
-                    //     println!("sample {}", sample);
-                    // }
-                    audio_buffer.push(sample)
+                    audio_device.queue(&vec![sample]);
                 },
                 None => (),
             };
-        }
-        if audio_buffer.len() == 44_100 {
-            // println!("queueing: {:?}", &audio_buffer[..32]);
-            audio_device.queue(&audio_buffer);
-            audio_buffer = vec![];
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
@@ -130,5 +121,13 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-// TODO: reset function?
-// TODO: save/load functionality
+/*
+TODO:
+- remaining APU channels
+- common mappers
+- battery-backed RAM solution
+- GUI? drag and drop ROMs?
+- reset function
+- save/load/pause functionality
+
+*/
