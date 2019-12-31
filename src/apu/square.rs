@@ -23,6 +23,8 @@ pub struct Square {
 
     timer: u16,
     timer_period: u16,
+
+    target_period: u16,
     sweep_divider: u16, // Period, P
     sweep_counter: u16,
     shift_count: u8,
@@ -50,6 +52,8 @@ impl Square {
 
             timer: 0,
             timer_period: 0,
+
+            target_period: 0,
             sweep_divider: 0,
             sweep_counter: 0,
             shift_count: 0,
@@ -76,10 +80,12 @@ impl Square {
         // Update volume for this channel
         // The mixer receives the current envelope volume except when
         self.sample = if self.duty_cycle[self.duty_counter] == 0 // the sequencer output is zero, or
-            || self.sweep_divider > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
+            || self.target_period > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
             || self.length_counter == 0 // the length counter is zero, or
-            || self.timer < 8 { // the timer has a value less than eight.
+            || self.timer_period < 8 { // the timer has a value less than eight.
                 0
+            } else if self.constant_volume_flag {
+                self.envelope
             } else {
                 self.decay_counter
             };
@@ -94,12 +100,6 @@ impl Square {
             self.start = false; // otherwise the start flag is cleared,
             self.decay_counter = 15; // the decay level counter is loaded with 15,
             self.envelope_divider = self.envelope; // and the divider's period is immediately reloaded
-        }
-    }
-    
-    pub fn clock_length_counter(&mut self) {
-        if !(self.length_counter == 0 || self.length_counter_halt) {
-            self.length_counter -= 1;
         }
     }
 
@@ -119,23 +119,18 @@ impl Square {
         }
     }
 
-    pub fn clock_sweep(&mut self) {
-        // The sweep unit continuously calculates each channel's target period in this way:
-        // A barrel shifter shifts the channel's 11-bit raw timer period right by the shift count, producing the change amount.
-        let change = self.timer_period >> self.shift_count;
-        // If the negate flag is true, the change amount is made negative.
-        // The target period is the sum of the current period and the change amount.
-        if self.sweep_negate {
-            self.sweep_divider = self.timer_period - change;
-            if self.second_channel {
-                self.sweep_divider -= 1;
-            }
-        } else {
-            self.sweep_divider = self.timer_period + change;
+    pub fn clock_length_counter(&mut self) {
+        if !(self.length_counter == 0 || self.length_counter_halt) {
+            self.length_counter -= 1;
         }
+    }
+
+    pub fn clock_sweep(&mut self) {
+        // When the frame counter sends a half-frame clock (at 120 or 96 Hz), two things happen.
         // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
-        if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer < 8 || self.sweep_divider > 0x7FF) {
-            self.timer_period = self.sweep_divider;
+        if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer_period < 8 || self.target_period > 0x7FF) {
+            self.timer_period = self.target_period;
+            println!("timer period adjusted to {}", self.timer_period);
         }
         // If the divider's counter is zero or the reload flag is true: The counter is set to P and the reload flag is cleared. Otherwise, the counter is decremented.
         if self.sweep_counter == 0 || self.sweep_reload {
@@ -143,6 +138,24 @@ impl Square {
             self.sweep_reload = false;
         } else {
             self.sweep_counter -= 1;
+        }
+
+        // The sweep unit continuously calculates each channel's target period in this way:
+        // A barrel shifter shifts the channel's 11-bit raw timer period right by the shift count, producing the change amount.
+        let change = self.timer_period >> self.shift_count;
+        // If the negate flag is true, the change amount is made negative.
+        // The target period is the sum of the current period and the change amount.
+        if self.sweep_negate {
+            self.target_period = self.timer_period - change;
+            // The two pulse channels have their adders' carry inputs wired differently,
+            // which produces different results when each channel's change amount is made negative:
+            // Pulse 1 adds the ones' complement (−c − 1). Making 20 negative produces a change amount of −21.
+            // Pulse 2 adds the two's complement (−c). Making 20 negative produces a change amount of −20.
+            if !self.second_channel {
+                self.target_period -= 1;
+            }
+        } else {
+            self.target_period = self.timer_period + change;
         }
     }
 
@@ -186,6 +199,5 @@ impl Square {
         // The sequencer is immediately restarted at the first value of the current sequence. The envelope is also restarted. The period divider is not reset.
         self.duty_counter = 0;
         self.start = true;
-        self.duty_counter = 0;
     }
 }
