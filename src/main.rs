@@ -69,7 +69,7 @@ fn main() -> Result<(), String> {
             match cpu.apu.clock() {
                 Some(sample) => {
                     sps += 1;
-                    audio_device.queue(&vec![sample]);
+                    if sps < 44100 {audio_device.queue(&vec![sample]);}
                 },
                 None => (),
             };
@@ -126,8 +126,14 @@ TODO:
 - remaining APU channels
 - common mappers
 - battery-backed RAM solution
+- fix mysterious Mario pipe non-locations
 - GUI? drag and drop ROMs?
 - reset function
 - save/load/pause functionality
+
+
+Timing notes:
+The PPU is throttled to 60Hz by sleeping in the main loop. This locks the CPU to roughly its intended speed, 1.789773MHz NTSC. The APU runs at half that.
+The SDL audio device samples/outputs at 44,100Hz, so as long as the APU queues up 44,100 samples per second, it works.
 
 */

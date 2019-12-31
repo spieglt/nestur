@@ -60,8 +60,6 @@ impl Apu {
     pub fn new() -> Self {
         let square_table = (0..31).map(|x| 95.52/((8128.0 / x as f32) + 100.0)).collect();
         let tnd_table = (0..203).map(|x| 163.67/((24329.0 / x as f32) + 100.0)).collect();
-        println!("square_table: {:?}", square_table);
-        println!("tnd_table: {:?}", tnd_table);
         Apu {
             square1:    Square::new(false),
             square2:    Square::new(true),
