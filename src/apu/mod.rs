@@ -267,7 +267,7 @@ impl Apu {
             self.triangle.clock_length_counter();
             self.noise.clock_envelope();
             self.noise.clock_length_counter();
-            self.clock_frame_counter();
+            // self.clock_frame_counter();
         }
     }
 }
