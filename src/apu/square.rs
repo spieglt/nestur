@@ -9,14 +9,14 @@ pub struct Square {
     pub sample: u16,
     pub enabled: bool,
 
-    duty_cycle: [u8; 8],
-    duty_counter: usize,
+    duty_cycle: [u8; 8], // "sequencer", set to one of the lines in DUTY_CYCLE_SEQUENCES
+    duty_counter: usize, // current index within the duty_cycle
     
-    envelope: u16,
-    envelope_divider: u16,
-    decay_counter: u16,
+    envelope: u16, // constant volume/envelope period. reflects what was last written to $4000/$4004
+    envelope_divider: u16, //
+    decay_counter: u16, // remainder of envelope divider
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    start: bool,
+    start: bool, // restarts envelope
 
     length_counter_halt: bool, // (this bit is also the envelope's loop flag)
     pub length_counter: u8,
@@ -107,15 +107,16 @@ impl Square {
         // When the divider is clocked while at 0, it is loaded with V and clocks the decay level counter.
         if self.envelope_divider == 0 {
             self.envelope_divider = self.envelope;
-            // Then one of two actions occurs: If the counter is non-zero, it is decremented,
-            if self.decay_counter != 0 {
-                self.decay_counter -= 1;
-            } else if self.length_counter_halt {
-                // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
-                self.decay_counter = 15;
-            }
         } else {
             self.envelope_divider -= 1;
+        }
+        // Then one of two actions occurs: If the counter is non-zero, it is decremented,
+        if self.decay_counter != 0 {
+            self.decay_counter -= 1;
+            // println!("decaying to {}", self.decay_counter);
+        } else if self.length_counter_halt {
+            // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
+            self.decay_counter = 15;
         }
     }
 
@@ -169,11 +170,12 @@ impl Square {
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
-        self.envelope = if self.constant_volume_flag {
-            value as u16 & 0b1111
-        } else {
-            self.decay_counter
-        };
+        self.envelope = value as u16 & 0b1111;
+        // if self.constant_volume_flag {
+        //     value as u16 & 0b1111
+        // } else {
+        //     self.decay_counter
+        // };
     }
 
     // $4001/$4005
@@ -199,7 +201,7 @@ impl Square {
         // When the enabled bit is cleared (via $4015), the length counter is forced to 0 and cannot be changed until enabled is set again (the length counter's previous value is lost).
         if self.enabled {
             self.length_counter = super::LENGTH_COUNTER_TABLE[value as usize >> 3];
-            println!("val: 0b{:08b}, wrote length_counter {}", value, self.length_counter);
+            // println!("val: 0b{:08b}, wrote length_counter {}", value, self.length_counter);
         }
         let timer_high = value as u16 & 0b0000_0111;
         self.timer_period &= 0b11111000_11111111; // mask off high 3 bits of 11-bit timer
