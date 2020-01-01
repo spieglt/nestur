@@ -69,7 +69,7 @@ fn main() -> Result<(), String> {
             match cpu.apu.clock() {
                 Some(sample) => {
                     sps += 1;
-                    if sps < 44100 {audio_device.queue(&vec![sample]);}
+                    if sps < 44_100 {audio_device.queue(&vec![sample]);}
                 },
                 None => (),
             };

@@ -107,16 +107,17 @@ impl Square {
         // When the divider is clocked while at 0, it is loaded with V and clocks the decay level counter.
         if self.envelope_divider == 0 {
             self.envelope_divider = self.envelope;
+            // Then one of two actions occurs: If the counter is non-zero, it is decremented,
+            if self.decay_counter != 0 {
+                self.decay_counter -= 1;
+                // println!("decaying to {}", self.decay_counter);
+            } else if self.length_counter_halt {
+                // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
+                println!("looping decay counter");
+                self.decay_counter = 15;
+            }
         } else {
             self.envelope_divider -= 1;
-        }
-        // Then one of two actions occurs: If the counter is non-zero, it is decremented,
-        if self.decay_counter != 0 {
-            self.decay_counter -= 1;
-            // println!("decaying to {}", self.decay_counter);
-        } else if self.length_counter_halt {
-            // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
-            self.decay_counter = 15;
         }
     }
 
@@ -130,7 +131,7 @@ impl Square {
         self.calculate_target_period();
         // When the frame counter sends a half-frame clock (at 120 or 96 Hz), two things happen.
         // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
-        if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer_period < 8 || self.timer_period > 0x7FF) {
+        if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer_period < 8 || self.target_period > 0x7FF) {
             self.timer_period = self.target_period;
             println!("timer period adjusted to {}", self.timer_period);
         }
@@ -138,6 +139,7 @@ impl Square {
         if self.sweep_counter == 0 || self.sweep_reload {
             self.sweep_counter = self.sweep_divider;
             self.sweep_reload = false;
+            if self.sweep_enabled { self.timer_period = self.target_period; } // This fixes the DK walking sound. Why? Not reflected in documentation.
         } else {
             self.sweep_counter -= 1;
         }
@@ -170,6 +172,7 @@ impl Square {
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
+        // println!("using envelope volume: {}", !self.constant_volume_flag);
         self.envelope = value as u16 & 0b1111;
         // if self.constant_volume_flag {
         //     value as u16 & 0b1111
@@ -180,6 +183,7 @@ impl Square {
 
     // $4001/$4005
     pub fn write_sweep(&mut self, value: u8) {
+        // println!("writing sweep 0b{:08b}", value);
         self.sweep_enabled = value >> 7 == 1;
         self.sweep_divider = ((value as u16 >> 4) & 0b111) + 1;
         self.sweep_negate = value & 0b1000 != 0;

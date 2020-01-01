@@ -97,6 +97,12 @@ impl Apu {
         sample
     }
 
+    fn mix(&self) -> f32 {
+        let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
+        let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
+        square_out + tnd_out
+    }
+
     pub fn write_reg(&mut self, address: usize, value: u8) {
         // println!("writing 0b{:08b} to 0x{:X}", value, address);
         match address {
@@ -128,13 +134,7 @@ impl Apu {
         }
     }
 
-    fn mix(&self) -> f32 {
-        let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
-        let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
-        square_out + tnd_out
-    }
-
-    //     mode 0:    mode 1:       function
+    //   mode 0:    mode 1:       function
     // ---------  -----------  -----------------------------
     // - - - f    - - - - -    IRQ (if bit 6 is clear)
     // - l - l    - l - - l    Length counter and sweep
