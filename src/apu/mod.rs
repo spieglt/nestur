@@ -77,8 +77,9 @@ impl Apu {
         self.noise.clock();
         self.dmc.clock();
 
-        if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
-            || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
+        // if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
+        //     || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
+        if FRAME_COUNTER_STEPS.contains(&self.cycle) {
             self.clock_frame_counter();
         }
         if self.remainder > CYCLES_PER_SAMPLE { 
@@ -89,8 +90,7 @@ impl Apu {
         self.remainder += 1.0;
 
         self.cycle += 1;
-        if (self.frame_counter == 4 && self.cycle == 14915)
-            || (self.frame_counter == 5 && self.cycle == 18641) {
+        if (self.frame_counter == 4 && self.cycle == 14915) || self.cycle == 18641 {
             self.cycle = 0;
         }
 
@@ -267,6 +267,7 @@ impl Apu {
             self.triangle.clock_length_counter();
             self.noise.clock_envelope();
             self.noise.clock_length_counter();
+            self.clock_frame_counter();
         }
     }
 }
