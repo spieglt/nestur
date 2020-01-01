@@ -12,26 +12,14 @@ use dmc::DMC;
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
 // Length counter controls note durations.
 
-// How to sync clock to audio?
-// Measure time slept to see if it will be a problem.
-// What if the APU kept a ring buffer of audio data way longer than the audio device's sample size,
-// and that was in a struct with some markers, so the audio device can just consume what it needs during PPU's sleep and mark
-// where it left off? But wouldn't it catch up and consume buffer? It won't catch up if it's big enough, and the APU can
-// change the markers somehow as it needs to? Or audio callback truncates what it consumed and adjusts head? No, audio device doesn't
-// need all samples, it needs one from the stream 44100 time per second. So just an if statement, if time has passed grab a sample.
-// But then that won't be running during PPU 60Hz sleep... So run audio in its own thread... Except then it won't work on Windows because of SDL...
-// So just run the console in its own thread and video/audio in the main thread... But that's annoying.
-// No. Don't have to be concerned about the audio device, that's solved by the buffer, and the 44100 samples get fed in batches of 4096 from the large buffer,
-// when the device needs them, which is accomplished just by calling .resume() before the main loop starts. So a large buffer really should allow for the 60Hz sleep lock.
-
 // We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
 // clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
 
 // TODO: organize APU structs
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-// const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
-const CYCLES_PER_SAMPLE: f32 = 19.65;
+const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
+// const CYCLES_PER_SAMPLE: f32 = 20.0;
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
@@ -96,7 +84,7 @@ impl Apu {
         if self.remainder > CYCLES_PER_SAMPLE { 
             // send sample to buffer
             sample = Some(self.mix());
-            self.remainder -= CYCLES_PER_SAMPLE;
+            self.remainder -= 20.0;
         }
         self.remainder += 1.0;
 
@@ -143,7 +131,6 @@ impl Apu {
     fn mix(&self) -> f32 {
         let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
         let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
-        // println!("square: {}, tnd: {}", square_out, tnd_out);
         square_out + tnd_out
     }
 

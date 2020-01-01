@@ -199,6 +199,7 @@ impl Square {
         // When the enabled bit is cleared (via $4015), the length counter is forced to 0 and cannot be changed until enabled is set again (the length counter's previous value is lost).
         if self.enabled {
             self.length_counter = super::LENGTH_COUNTER_TABLE[value as usize >> 3];
+            println!("val: 0b{:08b}, wrote length_counter {}", value, self.length_counter);
         }
         let timer_high = value as u16 & 0b0000_0111;
         self.timer_period &= 0b11111000_11111111; // mask off high 3 bits of 11-bit timer
