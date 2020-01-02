@@ -152,7 +152,8 @@ impl Apu {
         }
         if (self.current_frame == 1)
             || (self.frame_counter == 4 && self.current_frame == 3)
-            || (self.frame_counter == 5 && self.current_frame == 4) {
+            || (self.frame_counter == 5 && self.current_frame == 4)
+        {
             // step length counters and sweep units
             self.square1.clock_sweep();
             self.square2.clock_sweep();
