@@ -75,6 +75,7 @@ impl Apu {
         self.square1.clock();
         self.square2.clock();
         self.triangle.clock();
+        self.triangle.clock(); // TODO: hacky. clocking triangle twice because it runs every CPU cycle
         self.noise.clock();
         self.dmc.clock();
 
