@@ -71,24 +71,27 @@ impl Apu {
     pub fn clock(&mut self) -> Option<f32> {
         let mut sample = None;
 
+        // Clock each channel
         self.square1.clock();
         self.square2.clock();
         self.triangle.clock();
         self.noise.clock();
         self.dmc.clock();
 
-        // if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
-        //     || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
-        if FRAME_COUNTER_STEPS.contains(&self.cycle) {
-            self.clock_frame_counter();
-        }
+        // Send sample to buffer if necessary
         if self.remainder > CYCLES_PER_SAMPLE { 
-            // send sample to buffer
             sample = Some(self.mix());
             self.remainder -= 20.0;
         }
         self.remainder += 1.0;
 
+
+        // Step frame counter if necessary
+        // if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
+        //     || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
+        if FRAME_COUNTER_STEPS.contains(&self.cycle) {
+            self.clock_frame_counter();
+        }
         self.cycle += 1;
         if (self.frame_counter == 4 && self.cycle == 14915) || self.cycle == 18641 {
             self.cycle = 0;
@@ -239,7 +242,6 @@ impl Apu {
         if self.dmc.interrupt {
             val |= 1<<7;
         }
-
         // Reading this register clears the frame interrupt flag (but not the DMC interrupt flag).
         self.frame_interrupt = false;
         // TODO: If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
@@ -267,7 +269,6 @@ impl Apu {
             self.triangle.clock_length_counter();
             self.noise.clock_envelope();
             self.noise.clock_length_counter();
-            // self.clock_frame_counter();
         }
     }
 }
