@@ -13,7 +13,7 @@ pub struct Square {
     duty_counter: usize, // current index within the duty_cycle
     
     envelope: u16, // constant volume/envelope period. reflects what was last written to $4000/$4004
-    envelope_divider: u16, //
+    envelope_divider: u16,
     decay_counter: u16, // remainder of envelope divider
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
     start: bool, // restarts envelope
@@ -111,10 +111,8 @@ impl Square {
             // Then one of two actions occurs: If the counter is non-zero, it is decremented,
             if self.decay_counter != 0 {
                 self.decay_counter -= 1;
-                // println!("decaying to {}", self.decay_counter);
             } else if self.length_counter_halt {
-                // otherwise if the loop flag is set, the decay level counter is loaded with 15. 
-                println!("looping decay counter");
+                // otherwise if the loop flag is set, the decay level counter is loaded with 15.
                 self.decay_counter = 15;
             }
         } else {
@@ -134,7 +132,6 @@ impl Square {
         // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
         if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer_period < 8 || self.target_period > 0x7FF) {
             self.timer_period = self.target_period;
-            println!("timer period adjusted to {}", self.timer_period);
         }
         // If the divider's counter is zero or the reload flag is true: The counter is set to P and the reload flag is cleared. Otherwise, the counter is decremented.
         if self.sweep_counter == 0 || self.sweep_reload {
@@ -178,7 +175,6 @@ impl Square {
 
     // $4001/$4005
     pub fn write_sweep(&mut self, value: u8) {
-        // println!("writing sweep 0b{:08b}", value);
         self.sweep_enabled = value >> 7 == 1;
         self.sweep_divider = ((value as u16 >> 4) & 0b111) + 1;
         self.sweep_negate = value & 0b1000 != 0;

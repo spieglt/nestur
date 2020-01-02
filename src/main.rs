@@ -124,7 +124,8 @@ fn main() -> Result<(), String> {
 
 /*
 TODO:
-- remaining APU channels
+- DMC audio channel, high- and low-pass filters, refactor envelope
+- name audio variables (dividers, counters, etc.) more consistently
 - common mappers
 - battery-backed RAM solution
 - fix mysterious Mario pipe non-locations
@@ -136,5 +137,6 @@ TODO:
 Timing notes:
 The PPU is throttled to 60Hz by sleeping in the main loop. This locks the CPU to roughly its intended speed, 1.789773MHz NTSC. The APU runs at half that.
 The SDL audio device samples/outputs at 44,100Hz, so as long as the APU queues up 44,100 samples per second, it works.
-
+But it's not doing so evenly. If PPU runs faster than 60Hz, audio will get skipped, and if slower, audio will pop/have gaps.
+Need to probably lock everything to the APU but worried about checking time that often. Can do for some division of 44_100.
 */
