@@ -30,6 +30,8 @@ Thanks to Michael Fogleman's https://github.com/fogleman/nes for getting me unst
 
 - More mappers (only NROM/mapper 0 implemented so far)
 
-- Audio
+- DMC audio channel, high- and low-pass filters, APU cleanup/timing fix
+
+- Save/load functionality and battery-backed RAM solution
 
 - Player 2 controller?
