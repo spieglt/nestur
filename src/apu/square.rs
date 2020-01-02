@@ -70,7 +70,7 @@ impl Square {
 
     pub fn clock(&mut self) {
         // The sequencer is clocked by an 11-bit timer. Given the timer value t = HHHLLLLLLLL formed by timer high and timer low, this timer is updated every APU cycle
-        //  (i.e., every second CPU cycle), and counts t, t-1, ..., 0, t, t-1, ..., clocking the waveform generator when it goes from 0 to t.
+        // (i.e., every second CPU cycle), and counts t, t-1, ..., 0, t, t-1, ..., clocking the waveform generator when it goes from 0 to t.
         if self.timer == 0 {
             self.timer = self.timer_period;
             self.duty_counter = (self.duty_counter + 1) % 8;
@@ -82,7 +82,8 @@ impl Square {
         self.sample = if self.duty_cycle[self.duty_counter] == 0 // the sequencer output is zero, or
             || self.timer_period > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
             || self.length_counter == 0 // the length counter is zero, or
-            || self.timer_period < 8 { // the timer has a value less than eight.
+            || self.timer_period < 8 // the timer has a value less than eight.
+            {
                 0
             } else if self.constant_volume_flag {
                 self.envelope
@@ -172,13 +173,7 @@ impl Square {
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
         self.length_counter_halt = value & (1<<5) != 0;
         self.constant_volume_flag = value & (1<<4) != 0;
-        // println!("using envelope volume: {}", !self.constant_volume_flag);
         self.envelope = value as u16 & 0b1111;
-        // if self.constant_volume_flag {
-        //     value as u16 & 0b1111
-        // } else {
-        //     self.decay_counter
-        // };
     }
 
     // $4001/$4005
