@@ -2,6 +2,8 @@ mod addressing_modes;
 mod opcodes;
 mod utility;
 
+pub const CPU_RATE: usize = 1_789_773; // 1.789773MHz
+
 // RAM locations
 const STACK_OFFSET: usize = 0x100;
 const NMI_VECTOR: usize = 0xFFFA;

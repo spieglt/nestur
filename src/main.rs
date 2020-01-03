@@ -14,13 +14,16 @@ use apu::Apu;
 use cartridge::Cartridge;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
-use audio::initialize;
+use audio::{initialize, SAMPLE_RATE};
 
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
 
 // use cpuprofiler::PROFILER;
+const FRAMES_PER_SECOND: usize = 60; // 60Hz video
+const MILLISECONDS_PER_FRAME: usize = 1000/FRAMES_PER_SECOND;
+const AUDIO_SAMPLES_PER_FRAME: usize = SAMPLE_RATE/FRAMES_PER_SECOND;
 
 fn main() -> Result<(), String> {
     // Set up screen
@@ -38,6 +41,7 @@ fn main() -> Result<(), String> {
     let mut audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
     let mut half_cycle = false;
     audio_device.resume();
+    let mut audio_buffer = Vec::<f32>::new();
 
     // Initialize hardware components
     let cart = Cartridge::new();
@@ -49,7 +53,8 @@ fn main() -> Result<(), String> {
     let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
-    let mut sps = 0;
+    let mut audio_samples_per_second = 0;
+    let mut samples_per_frame = 0;
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -68,9 +73,16 @@ fn main() -> Result<(), String> {
         for _ in 0..apu_cycles {
             match cpu.apu.clock() {
                 Some(sample) => {
-                    sps += 1;
-                    if sps < 44_100 {audio_device.queue(&vec![sample]);} // TODO: fix this
+                    audio_samples_per_second += 1;
+                    // if audio_samples_per_second < 44_100 {audio_device.queue(&vec![sample]);} // TODO: fix this
                     // audio_device.queue(&vec![sample]);
+                    audio_buffer.push(sample);
+                    if audio_buffer.len() > AUDIO_SAMPLES_PER_FRAME * 2 {
+                        audio_buffer = audio_buffer[..AUDIO_SAMPLES_PER_FRAME*2].to_vec();
+                    }
+                    if samples_per_frame > 0 {
+                        samples_per_frame -= 1;
+                    }
                 },
                 None => (),
             };
@@ -86,10 +98,25 @@ fn main() -> Result<(), String> {
                 fps += 1; // keep track of how many frames we've rendered this second
                 draw_to_window(&mut texture, &mut canvas, &screen_buffer)?; // draw the buffer to the window with SDL
                 let now = Instant::now();
+                if audio_buffer.len() > AUDIO_SAMPLES_PER_FRAME {
+                    audio_device.queue(&audio_buffer[..AUDIO_SAMPLES_PER_FRAME]);
+                    audio_buffer = audio_buffer[AUDIO_SAMPLES_PER_FRAME..].to_vec();
+                } else {
+                    println!("audio buffer underflow");
+                }
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
+                    // if we're about to end this 60th-of-a-second's work and haven't queued enough audio yet, make sure the queue is full
+                    if audio_buffer.len() > samples_per_frame {
+                        let difference = SAMPLE_RATE - samples_per_frame;
+                        audio_device.queue(&audio_buffer[..samples_per_frame]);
+                    } else {
+                        println!("audio buffer underflow");
+                    }
+                    audio_buffer = audio_buffer[samples_per_frame..].to_vec();
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
+                samples_per_frame = AUDIO_SAMPLES_PER_FRAME;
                 timer = Instant::now();
                 // listen for Esc or window close. TODO: does this prevent keyboard events from being handled?
                 for event in event_pump.poll_iter() {
@@ -109,12 +136,12 @@ fn main() -> Result<(), String> {
         // calculate fps
         let now = Instant::now();
         if now > fps_timer + Duration::from_secs(1) {
-            println!("fps: {}", fps);
+            println!("video frames per second: {}", fps);
             fps = 0;
             fps_timer = now;
 
-            println!("samples per second: {}", sps);
-            sps = 0;
+            println!("audio samples per second: {}", audio_samples_per_second);
+            audio_samples_per_second = 0;
 
         }
     }

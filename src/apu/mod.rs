@@ -7,6 +7,8 @@ use noise::Noise;
 use square::Square;
 use triangle::Triangle;
 use dmc::DMC;
+use super::audio::SAMPLE_RATE;
+use super::cpu::CPU_RATE;
 
 // APU clock ticks every other CPU cycle.
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
@@ -16,10 +18,9 @@ use dmc::DMC;
 // clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
 
 // TODO: organize APU structs
-
+const APU_RATE: f32 = (CPU_RATE as f32)/2.;
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
-// const CYCLES_PER_SAMPLE: f32 = 20.0;
+const CYCLES_PER_SAMPLE: f32 = APU_RATE/(SAMPLE_RATE as f32); // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
@@ -82,14 +83,11 @@ impl Apu {
         // Send sample to buffer if necessary
         if self.remainder > CYCLES_PER_SAMPLE { 
             sample = Some(self.mix());
-            self.remainder -= 20.0;
+            self.remainder -= CYCLES_PER_SAMPLE-1.;
         }
         self.remainder += 1.0;
 
-
         // Step frame counter if necessary
-        // if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
-        //     || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
         if FRAME_COUNTER_STEPS.contains(&self.cycle) {
             self.clock_frame_counter();
         }
@@ -105,37 +103,6 @@ impl Apu {
         let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
         let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
         square_out + tnd_out
-    }
-
-    pub fn write_reg(&mut self, address: usize, value: u8) {
-        // println!("writing 0b{:08b} to 0x{:X}", value, address);
-        match address {
-            0x4000 => self.square1.write_duty(value),
-            0x4001 => self.square1.write_sweep(value),
-            0x4002 => self.square1.write_timer_low(value),
-            0x4003 => self.square1.write_timer_high(value),
-            0x4004 => self.square2.write_duty(value),
-            0x4005 => self.square2.write_sweep(value),
-            0x4006 => self.square2.write_timer_low(value),
-            0x4007 => self.square2.write_timer_high(value),
-            0x4008 => self.triangle.write_counter(value),
-            0x4009 => (),
-            0x400A => self.triangle.write_timer_low(value),
-            0x400B => self.triangle.write_timer_high(value),
-            0x400C => self.noise.write_envelope(value),
-            0x400D => (),
-            0x400E => self.noise.write_loop_noise(value),
-            0x400F => self.noise.write_length_counter(value),
-            0x4010 => self.dmc.write_control(value),
-            0x4011 => self.dmc.direct_load(value),
-            0x4012 => self.dmc.write_sample_address(value),
-            0x4013 => self.dmc.write_sample_length(value),
-            0x4014 => (),
-            0x4015 => self.write_control(value),
-            0x4016 => (),
-            0x4017 => self.write_frame_counter(value),
-            _ => panic!("bad address written: 0x{:X}", address),
-        }
     }
 
     //   mode 0:    mode 1:       function
@@ -170,6 +137,37 @@ impl Apu {
         self.current_frame += 1;
         if self.current_frame == self.frame_counter {
             self.current_frame = 0;
+        }
+    }
+
+    pub fn write_reg(&mut self, address: usize, value: u8) {
+        // println!("writing 0b{:08b} to 0x{:X}", value, address);
+        match address {
+            0x4000 => self.square1.write_duty(value),
+            0x4001 => self.square1.write_sweep(value),
+            0x4002 => self.square1.write_timer_low(value),
+            0x4003 => self.square1.write_timer_high(value),
+            0x4004 => self.square2.write_duty(value),
+            0x4005 => self.square2.write_sweep(value),
+            0x4006 => self.square2.write_timer_low(value),
+            0x4007 => self.square2.write_timer_high(value),
+            0x4008 => self.triangle.write_counter(value),
+            0x4009 => (),
+            0x400A => self.triangle.write_timer_low(value),
+            0x400B => self.triangle.write_timer_high(value),
+            0x400C => self.noise.write_envelope(value),
+            0x400D => (),
+            0x400E => self.noise.write_loop_noise(value),
+            0x400F => self.noise.write_length_counter(value),
+            0x4010 => self.dmc.write_control(value),
+            0x4011 => self.dmc.direct_load(value),
+            0x4012 => self.dmc.write_sample_address(value),
+            0x4013 => self.dmc.write_sample_length(value),
+            0x4014 => (),
+            0x4015 => self.write_control(value),
+            0x4016 => (),
+            0x4017 => self.write_frame_counter(value),
+            _ => panic!("bad address written: 0x{:X}", address),
         }
     }
 
