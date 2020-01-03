@@ -8,6 +8,8 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 - NTSC timing
 
+<img src="pics/smb.png" width=600>
+
 ## Controls:
 ```
  Button  |   Key
