@@ -10,6 +10,8 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 <img src="pics/smb.png" width=600>
 
+<sup>(Warning: this pipe currently takes you to an empty room, it's not the only one, and I don't know why.)</sup>
+
 ## Controls:
 ```
  Button  |   Key
