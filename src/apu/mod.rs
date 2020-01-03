@@ -83,7 +83,7 @@ impl Apu {
         // Send sample to buffer if necessary
         if self.remainder > CYCLES_PER_SAMPLE { 
             sample = Some(self.mix());
-            self.remainder -= CYCLES_PER_SAMPLE-1.;
+            self.remainder -= CYCLES_PER_SAMPLE;
         }
         self.remainder += 1.0;
 
