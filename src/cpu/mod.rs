@@ -76,6 +76,9 @@ pub struct Cpu {
     // ppu
     pub ppu: super::Ppu,
 
+    // apu
+    pub apu: super::Apu,
+
     // controller
     pub strobe: u8,
     pub button_states: u8, // Player 1 controller
@@ -83,7 +86,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(cart: &super::Cartridge, ppu: super::Ppu) -> Self {
+    pub fn new(cart: &super::Cartridge, ppu: super::Ppu, apu: super::Apu) -> Self {
         let mut cpu = Cpu{
             mem: vec![0; 0x2000],
             A: 0, X: 0, Y: 0,
@@ -95,6 +98,7 @@ impl Cpu {
             prg_rom: cart.prg_rom.clone(),
             mapper_func: cart.cpu_mapper_func,
             ppu: ppu,
+            apu: apu,
             strobe: 0,
             button_states: 0,
             button_number: 0,
@@ -142,16 +146,22 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> u64 {
+        
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
             self.delay -= 1;
             return 1;
         }
 
+        // handle interrupts
         if self.ppu.trigger_nmi {
             self.nmi();
         }
         self.ppu.trigger_nmi = false;
+        if self.apu.trigger_irq && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
+            self.irq();
+        }
+        self.apu.trigger_irq = false;
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
@@ -184,14 +194,15 @@ impl Cpu {
     // memory interface
     fn read(&mut self, address: usize) -> u8 {
         let val = match address {
-            0x0000...0x1FFF => self.mem[address % 0x0800],
-            0x2000...0x3FFF => self.read_ppu_reg(address % 8),
+            0x0000..=0x1FFF => self.mem[address % 0x0800],
+            0x2000..=0x3FFF => self.read_ppu_reg(address % 8),
             0x4014          => self.read_ppu_reg(8),
+            0x4015          => self.apu.read_status(),
             0x4016          => self.read_controller(),
-            0x4000...0x4017 => 0, // APU stuff
-            0x4018...0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020...0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
-                *(self.mapper_func)(self, address, false).unwrap() // unwraping because mapper funcs won't return None for reads.
+            0x4000..=0x4017 => 0, // can't read from these APU registers
+            0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
+            0x4020..=0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
+                *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads.
             },
             _ => panic!("invalid read from 0x{:02x}", address),
         };
@@ -201,13 +212,13 @@ impl Cpu {
     // memory interface
     fn write(&mut self, address: usize, val: u8) {
         match address {
-            0x0000...0x1FFF => self.mem[address % 0x0800] = val,
-            0x2000...0x3FFF => self.write_ppu_reg(address % 8, val),
+            0x0000..=0x1FFF => self.mem[address % 0x0800] = val,
+            0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),
             0x4014          => self.write_ppu_reg(8, val),
             0x4016          => self.write_controller(val),
-            0x4000...0x4017 => (), // APU stuff
-            0x4018...0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020...0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
+            0x4000..=0x4017 => self.apu.write_reg(address, val), // APU stuff
+            0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
+            0x4020..=0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
                 match (self.mapper_func)(self, address, true) {
                     Some(loc) => *loc = val,
                     None => (),

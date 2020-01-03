@@ -64,8 +64,8 @@ pub struct Ppu {
     grayscale:                     bool,
     show_background_left:          bool, // 1: Show background in leftmost 8 pixels of screen, 0: Hide
     show_sprites_left:             bool, // 1: Show sprites in leftmost 8 pixels of screen, 0: Hide
-    show_background:           bool, // 1: Show background
-    show_sprites:              bool, // 1: Show sprites
+    show_background:               bool, // 1: Show background
+    show_sprites:                  bool, // 1: Show sprites
     emphasize_red:                 bool, // Emphasize red
     emphasize_green:               bool, // Emphasize green
     emphasize_blue:                bool, // Emphasize blue
@@ -143,7 +143,7 @@ impl Ppu {
         }
     }
 
-    pub fn step(&mut self) -> (Option<(usize, usize, (u8, u8, u8))>, bool) {
+    pub fn clock(&mut self) -> (Option<(usize, usize, (u8, u8, u8))>, bool) {
         if self.nmi_delay > 0 {
             self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
