@@ -86,10 +86,7 @@ impl Apu {
         }
         self.remainder += 1.0;
 
-
         // Step frame counter if necessary
-        // if (self.frame_counter == 4 && FRAME_COUNTER_STEPS[..4].contains(&self.cycle))
-        //     || (self.frame_counter == 5 && FRAME_COUNTER_STEPS.contains(&self.cycle)) {
         if FRAME_COUNTER_STEPS.contains(&self.cycle) {
             self.clock_frame_counter();
         }

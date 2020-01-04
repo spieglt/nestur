@@ -147,4 +147,9 @@ PlayerCtrlRoutine is called by PlayerInjuryBlink and PlayerDeath, and all three 
 So the normal physics loop checks for pipe entry every so often. So need to find out how HandlePipeEntry determines where to send you,
 and what puts you in the room.
 
+Functions that write to WarpZoneControl:
+WarpZoneObject<-RunEnemyObjectsCore<-EnemiesAndLoopsCore<-VictoryMode/GameEngine
+ScrollLockObject_Warp<-DecodeAreaData<-ProcessAreaData<-
+
+Is ParseRow0e a clue?
 */
