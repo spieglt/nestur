@@ -7,8 +7,8 @@ pub fn nrom_cpu(cpu: &mut crate::cpu::Cpu, address: usize, writing: bool) -> Opt
     // CPU $C000-$FFFF: Last 16 KB of ROM (NROM-256) or mirror of $8000-$BFFF (NROM-128).
     let l = cpu.prg_rom.len();
     match address {
-        0x8000...0xBFFF => Some(&mut cpu.prg_rom[0][address % 0x4000]),
-        0xC000...0xFFFF => Some(&mut cpu.prg_rom[l - 1][address % 0x4000]),
+        0x8000..=0xBFFF => Some(&mut cpu.prg_rom[0][address % 0x4000]),
+        0xC000..=0xFFFF => Some(&mut cpu.prg_rom[l - 1][address % 0x4000]),
         _ => panic!("bad cpu address passed to nrom mapper"),
     }
 }
@@ -18,7 +18,7 @@ pub fn nrom_ppu(ppu: &mut crate::ppu::Ppu, address: usize, writing: bool) -> Opt
     // NROM/mapper 0 doesn't allow writes to CHR-ROM
     if writing || l == 0 { return None };
     match address {
-        0x0000...0x1FFF => Some(&mut ppu.pattern_tables[l-1][address]),
+        0x0000..=0x1FFF => Some(&mut ppu.pattern_tables[l-1][address]),
         _ => panic!("bad ppu address passed to nrom mapper: 0x{:04x}", address),
     }
 }

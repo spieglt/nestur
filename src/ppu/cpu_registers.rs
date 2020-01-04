@@ -159,11 +159,11 @@ impl super::Ppu {
         let mem_val = self.read(self.v as usize);
         let ret_val;
         match self.v % 0x4000 {
-            0x0000...0x3EFF => {
+            0x0000..=0x3EFF => {
                 ret_val = self.read_buffer;
                 self.read_buffer = mem_val;
             },
-            0x3F00...0x3FFF => {
+            0x3F00..=0x3FFF => {
                 ret_val = mem_val;
                 self.read_buffer = self.read(self.v as usize - 0x1000);
             },

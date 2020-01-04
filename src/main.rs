@@ -14,7 +14,6 @@ use apu::Apu;
 use cartridge::Cartridge;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
-use audio::initialize;
 
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
@@ -35,7 +34,7 @@ fn main() -> Result<(), String> {
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
     // Set up audio
-    let mut audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
+    let audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
     let mut half_cycle = false;
     audio_device.resume();
 
@@ -109,11 +108,11 @@ fn main() -> Result<(), String> {
         // calculate fps
         let now = Instant::now();
         if now > fps_timer + Duration::from_secs(1) {
-            println!("fps: {}", fps);
+            // println!("fps: {}", fps);
             fps = 0;
             fps_timer = now;
 
-            println!("samples per second: {}", sps);
+            // println!("samples per second: {}", sps);
             sps = 0;
 
         }
@@ -139,4 +138,13 @@ The PPU is throttled to 60Hz by sleeping in the main loop. This locks the CPU to
 The SDL audio device samples/outputs at 44,100Hz, so as long as the APU queues up 44,100 samples per second, it works.
 But it's not doing so evenly. If PPU runs faster than 60Hz, audio will get skipped, and if slower, audio will pop/have gaps.
 Need to probably lock everything to the APU but worried about checking time that often. Can do for some division of 44_100.
+
+Nowhere room debugging:
+Do we want to detect every time WarpZoneControl is accessed and log a buffer before and after it?
+Or is the problem not with loading WZC but writing it? Good and bad logs match when entering the pipe.
+The subroutine that accesses $06D6 is HandlePipeEntry. That's only called by ChkFootMTile->DoFootCheck->ChkCollSize->PlayerBGCollision->PlayerCtrlRoutine.
+PlayerCtrlRoutine is called by PlayerInjuryBlink and PlayerDeath, and all three of those are called by GameRoutines engine.
+So the normal physics loop checks for pipe entry every so often. So need to find out how HandlePipeEntry determines where to send you,
+and what puts you in the room.
+
 */

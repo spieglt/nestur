@@ -17,7 +17,7 @@ const DECIMAL_FLAG: u8           = 1 << 3;
 const OVERFLOW_FLAG: u8          = 1 << 6;
 const NEGATIVE_FLAG: u8          = 1 << 7;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Mode {
     ABS, ABX, ABY, ACC,
     IMM, IMP, IDX, IND,
@@ -83,6 +83,8 @@ pub struct Cpu {
     pub strobe: u8,
     pub button_states: u8, // Player 1 controller
     button_number: u8,
+
+    more: usize,
 }
 
 impl Cpu {
@@ -102,6 +104,7 @@ impl Cpu {
             strobe: 0,
             button_states: 0,
             button_number: 0,
+            more: 0,
             opcode_table: vec![
         //         00        01        02        03        04        05        06        07        08        09        0A        0B        0C        0D        0E        0F
         /*00*/  Cpu::brk, Cpu::ora, Cpu::bad, Cpu::slo, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo, Cpu::php, Cpu::ora, Cpu::asl, Cpu::nop, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo,  /*00*/
@@ -167,26 +170,37 @@ impl Cpu {
         let clock = self.clock;
         let opcode = <usize>::from(self.read(self.PC));
 
-        // debugging
-        // let pc = self.PC;
-        // print!("{:04X} {:02X} [{:02x} {:02x}] A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", 
-        //     pc, self.read(pc), self.read(pc + 1), self.read(pc+2),
-        //     self.A, self.X, self.Y, self.P, self.S,
-        // );
-        // let mut zpg = Vec::<u8>::new();
-        // for i in 0..32 {
-        //     zpg.push(self.read(i));
-        // }
-        // print!(" zpg: {:x?}", zpg);
-        // print!("\n");
-
         // get addressing mode
         let mode = self.mode_table[opcode].clone();
         let address = mode.get()(self);
+
+        // debugging
+        let pc = self.PC;
+        if address == 0x06d6 { // if we're doing something with the WarpZoneControl global
+            println!("===========================\n0x{:04x} {:?}", address, mode);
+            if self.more == 0 {
+                self.more += 10;
+            }
+        }
+        if self.more > 0 {
+            print!("{:04X} {:02X} [{:02x} {:02x}] A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+                pc, self.read(pc), self.read(pc + 1), self.read(pc+2),
+                self.A, self.X, self.Y, self.P, self.S,
+            );
+            let mut zpg = Vec::<u8>::new();
+            for i in 0..32 {
+                zpg.push(self.read(i));
+            }
+            print!(" zpg: {:x?}", zpg);
+            print!("\n");
+            self.more -= 1;
+        }
+
         // advance program counter according to how many bytes that instruction operated on
         self.advance_pc(mode);
         // look up instruction in table and execute
         self.opcode_table[opcode](self, address, mode);
+
         // return how many cycles it took
         self.clock - clock
     }

@@ -159,7 +159,7 @@ impl Ppu {
             // background-related things
             match self.line_cycle {
                 0 => (), // This is an idle cycle.
-                1...256 => {
+                1..=256 => {
                     if self.scanline != 261 {
                         pixel = Some(self.render_pixel());
                     }
@@ -168,7 +168,7 @@ impl Ppu {
                     self.perform_memory_fetch();
                 },
                 257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                321...336 => {
+                321..=336 => {
                     self.load_data_into_registers();
                     self.shift_registers();
                     self.perform_memory_fetch();
@@ -186,7 +186,7 @@ impl Ppu {
                     self.evaluate_sprites(); // ignoring all timing details
                     self.fetch_sprites();
                 },
-                321...340 => (), // Read the first byte in secondary OAM (while the PPU fetches the first two background tiles for the next scanline)
+                321..=340 => (), // Read the first byte in secondary OAM (while the PPU fetches the first two background tiles for the next scanline)
                 _ => (),
             }
         }
