@@ -28,21 +28,21 @@ pub enum Mode {
 type AddressingFunction = fn(&mut Cpu) -> usize;
 
 impl Mode {
-    fn get(&self) -> AddressingFunction {
+    fn get(&self) -> (AddressingFunction, usize) { // usize is number of bytes the instruction takes, used for debug printing
         match self {
-            Mode::ABS => Cpu::absolute,
-            Mode::ABX => Cpu::absolute_x,
-            Mode::ABY => Cpu::absolute_y,
-            Mode::ACC => Cpu::accumulator,
-            Mode::IMM => Cpu::immediate,
-            Mode::IMP => Cpu::implied,
-            Mode::IDX => Cpu::indexed_indirect,
-            Mode::IND => Cpu::indirect,
-            Mode::INX => Cpu::indirect_indexed,
-            Mode::REL => Cpu::relative,
-            Mode::ZPG => Cpu::zero_page,
-            Mode::ZPX => Cpu::zero_page_x,
-            Mode::ZPY => Cpu::zero_page_y,
+            Mode::ABS => (Cpu::absolute, 3),
+            Mode::ABX => (Cpu::absolute_x, 3),
+            Mode::ABY => (Cpu::absolute_y, 3),
+            Mode::ACC => (Cpu::accumulator, 1),
+            Mode::IMM => (Cpu::immediate, 2),
+            Mode::IMP => (Cpu::implied, 1),
+            Mode::IDX => (Cpu::indexed_indirect, 2),
+            Mode::IND => (Cpu::indirect, 3),
+            Mode::INX => (Cpu::indirect_indexed, 2),
+            Mode::REL => (Cpu::relative, 2),
+            Mode::ZPG => (Cpu::zero_page, 2),
+            Mode::ZPX => (Cpu::zero_page_x, 2),
+            Mode::ZPY => (Cpu::zero_page_y, 2),
         }
     }
 }
@@ -172,7 +172,8 @@ impl Cpu {
 
         // get addressing mode
         let mode = self.mode_table[opcode].clone();
-        let address = mode.get()(self);
+        let (address_func, num_bytes) = mode.get();
+        let address = address_func(self);
 
         // debugging
         let pc = self.PC;
@@ -183,8 +184,14 @@ impl Cpu {
             }
         }
         if self.more > 0 {
-            print!("{:04X} {:02X} [{:02x} {:02x}] A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-                pc, self.read(pc), self.read(pc + 1), self.read(pc+2),
+            let operands = match num_bytes {
+                1 => "     ".to_string(),
+                2 => format!("{:02X}   ", self.read(pc + 1)),
+                3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
+                _ => "error".to_string(),
+            };
+            print!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+                pc, self.read(pc), operands, OPCODE_DISPLAY_NAMES[opcode],
                 self.A, self.X, self.Y, self.P, self.S,
             );
             let mut zpg = Vec::<u8>::new();
@@ -310,3 +317,39 @@ $4000-$4017 	$0018 	NES APU and I/O registers
 $4018-$401F 	$0008 	APU and I/O functionality that is normally disabled. See CPU Test Mode.
 $4020-$FFFF 	$BFE0 	Cartridge space: PRG ROM, PRG RAM, and mapper registers (See Note)
 */
+
+// For debug output
+const OPCODE_DISPLAY_NAMES: [&str; 256] = [
+	"BRK", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
+	"PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
+	"BPL", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
+	"CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
+	"JSR", "AND", "BAD", "RLA", "BIT", "AND", "ROL", "RLA",
+	"PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
+	"BMI", "AND", "BAD", "RLA", "NOP", "AND", "ROL", "RLA",
+	"SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
+	"RTI", "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE",
+	"PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR", "SRE",
+	"BVC", "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE",
+	"CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
+	"RTS", "ADC", "BAD", "RRA", "NOP", "ADC", "ROR", "RRA",
+	"PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
+	"BVS", "ADC", "BAD", "RRA", "NOP", "ADC", "ROR", "RRA",
+	"SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
+	"NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
+	"DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX", "SAX",
+	"BCC", "STA", "BAD", "AHX", "STY", "STA", "STX", "SAX",
+	"TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX", "AHX",
+	"LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
+	"TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX",
+	"BCS", "LDA", "BAD", "LAX", "LDY", "LDA", "LDX", "LAX",
+	"CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
+	"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
+	"INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP",
+	"BNE", "CMP", "BAD", "DCP", "NOP", "CMP", "DEC", "DCP",
+	"CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
+	"CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC",
+	"INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
+	"BEQ", "SBC", "BAD", "ISC", "NOP", "SBC", "INC", "ISC",
+    "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
+];

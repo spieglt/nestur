@@ -152,4 +152,9 @@ WarpZoneObject<-RunEnemyObjectsCore<-EnemiesAndLoopsCore<-VictoryMode/GameEngine
 ScrollLockObject_Warp<-DecodeAreaData<-ProcessAreaData<-
 
 Is ParseRow0e a clue?
+
+I think L_UndergroundArea3 is the data for the coin rooms. Need to verify that it's loaded properly.
+It's at 0x2D89 in the ROM, so 0x2D79 without header. Which means it's in PRG ROM, because it's within the first 0x4000,
+in the first PRG chunk/vec given to CPU by cartridge. Because it's NROM, that will be mapped starting at $8000,
+so its position in memory should be 0x8000 + 0x2D79 = 0xAD79. 
 */
