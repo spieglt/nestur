@@ -46,7 +46,7 @@ impl super::Cpu {
     }
 
     pub fn branch(&mut self, unsigned_offset: u8) {
-        let offset: i8 = u8_to_i8(unsigned_offset);
+        let offset = unsigned_offset as i8;
         self.clock += 1;
         let old_addr = self.PC;
         self.add_offset_to_pc(offset);
@@ -91,9 +91,4 @@ impl super::Cpu {
             self.P &= 0xFF - ZERO_FLAG;
         }
     }
-
-}
-
-pub fn u8_to_i8(offset: u8) -> i8 {
-    unsafe { std::mem::transmute(offset) }
 }
