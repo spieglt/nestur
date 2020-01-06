@@ -9,7 +9,7 @@ pub fn nrom_cpu(cpu: &mut crate::cpu::Cpu, address: usize, writing: bool) -> Opt
     match address {
         0x8000..=0xBFFF => Some(&mut cpu.prg_rom[0][address % 0x4000]),
         0xC000..=0xFFFF => Some(&mut cpu.prg_rom[l - 1][address % 0x4000]),
-        _ => panic!("bad cpu address passed to nrom mapper"),
+        _ => panic!("bad cpu address passed to nrom mapper: 0x{:04x}", address),
     }
 }
 
