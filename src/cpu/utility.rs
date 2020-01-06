@@ -95,5 +95,5 @@ impl super::Cpu {
 }
 
 pub fn u8_to_i8(offset: u8) -> i8 {
-    unsafe { std::mem::transmute(offset) }
+    offset as i8
 }

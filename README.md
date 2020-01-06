@@ -4,7 +4,7 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 - One dependency (SDL)
 
-- One line of `unsafe` (`std::mem::transmute::<u8>() -> i8`)
+- Zero lines of `unsafe` in nestur
 
 - NTSC timing
 
