@@ -4,7 +4,7 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 - One dependency (SDL)
 
-- Zero lines of `unsafe` in nestur
+- Zero lines of `unsafe` in nestur itself
 
 - NTSC timing
 
