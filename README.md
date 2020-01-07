@@ -39,3 +39,6 @@ Thanks to Michael Fogleman's https://github.com/fogleman/nes for getting me unst
 - Save/load functionality and battery-backed RAM solution
 
 - Player 2 controller?
+
+
+Please also check out [Cloaker](https://github.com/spieglt/cloaker) and [Flying Carpet](https://github.com/spieglt/flyingcarpet)!
