@@ -12,7 +12,7 @@ pub struct Triangle {
     waveform_counter: usize,
     
     pub length_counter: u8,
-    length_counter_halt: bool, // (this bit is also the linear counter's control flag) / (this bit is also the length counter halt flag)
+    length_counter_halt: bool, // (this bit is also the linear counter's control flag)
     
     linear_counter: u8,
     counter_reload_value: u8,

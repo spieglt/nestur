@@ -177,7 +177,7 @@ impl Cpu {
 
         // debugging
         // assert!(self.memory_at(0xAD79, 141) == UNDERGROUND_LEVEL.to_vec() && self.memory_at(0xA133, 45) == UNDERGROUND_ENEMIES.to_vec());
-        let pc = self.PC;
+        // let pc = self.PC;
         // if address == 0x06D6 {
         //     // let mem = self.memory_at(0xAD79, 141);
         //     // println!("memory at 0xAD79: {:02X?}", mem);
@@ -186,31 +186,31 @@ impl Cpu {
         //         self.more += 24;
         //     }
         // }
-        if pc == 0xB1E5 {
-            println!("===========================");
-            if self.more == 0 {
-                self.more += 24;
-            }
-        }
-        if self.more > 0 {
-            let operands = match num_bytes {
-                1 => "     ".to_string(),
-                2 => format!("{:02X}   ", self.read(pc + 1)),
-                3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
-                _ => "error".to_string(),
-            };
-            print!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-                pc, self.read(pc), operands, OPCODE_DISPLAY_NAMES[opcode],
-                self.A, self.X, self.Y, self.P, self.S,
-            );
-            // let mut zpg = Vec::<u8>::new();
-            // for i in 0..32 {
-            //     zpg.push(self.read(i));
-            // }
-            // print!(" zpg: {:x?}", zpg);
-            print!("\n");
-            self.more -= 1;
-        }
+        // if pc == 0xB1E5 {
+        //     println!("===========================");
+        //     if self.more == 0 {
+        //         self.more += 24;
+        //     }
+        // }
+        // if self.more > 0 {
+        //     let operands = match num_bytes {
+        //         1 => "     ".to_string(),
+        //         2 => format!("{:02X}   ", self.read(pc + 1)),
+        //         3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
+        //         _ => "error".to_string(),
+        //     };
+        //     print!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+        //         pc, self.read(pc), operands, OPCODE_DISPLAY_NAMES[opcode],
+        //         self.A, self.X, self.Y, self.P, self.S,
+        //     );
+        //     // let mut zpg = Vec::<u8>::new();
+        //     // for i in 0..32 {
+        //     //     zpg.push(self.read(i));
+        //     // }
+        //     // print!(" zpg: {:x?}", zpg);
+        //     print!("\n");
+        //     self.more -= 1;
+        // }
 
         // advance program counter according to how many bytes that instruction operated on
         self.advance_pc(mode);
@@ -252,6 +252,20 @@ impl Cpu {
         // if address == 0x06D6 {
         //     println!("writing 0x{:02X} to 0x{:04X}", val, address);
         // }
+
+        let vars = vec![
+            ("PlayerEntranceCtrl", 0x0710),
+            ("AltEntranceControl", 0x0752),
+            ("EntrancePage", 0x0751),
+            ("AreaPointer", 0x0750),
+            ("AreaAddrsLOffset", 0x074f),
+        ];
+        for i in vars.iter() {
+            if i.1 == address {
+                println!("writing 0x{:02X} to {}", val, i.0);
+            }
+        }
+
         match address {
             0x0000..=0x1FFF => self.mem[address % 0x0800] = val,
             0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),

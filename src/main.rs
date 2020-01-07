@@ -202,5 +202,15 @@ shows the program counter at 0xB1EF, meaning I was right that the routine's addr
 Anyway, hook PC == $B1E5.
 
 Ok, so, comparing logs with the good emulator down the WORKING pipe in 1-1 shows a divergence in behavior based on loading value 0x6E from $0755 into the accumulator, 
-and comparing that to 0x50. What's at $0755? Player_Pos_ForScroll. 
+and comparing that to 0x50. What's at $0755? Player_Pos_ForScroll, which is just Mario's horizontal position on screen.
+And that's the only difference, over and over, so doesn't really matter.
+Now need to see what's different when we drop into the bad room. 1200 lines in log from one pipe,
+25 lines each (24 and a separator) so 48 iterations of VerticalPipeEntry per pipe.
+But logs for VerticalPipeEntry for the bad room also seem to match the good emulator except for the Player_Pos_ForScroll...
+Other suspicious variables:
+PlayerEntranceCtrl
+AltEntranceControl
+EntrancePage
+AreaPointer
+AreaAddrsLOffset
 */
