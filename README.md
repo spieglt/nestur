@@ -26,9 +26,7 @@ ___________________
 |  Right |  Right |
 -------------------
 ```
-The code aims to follow the explanations from https://wiki.nesdev.com/w/index.php/NES_reference_guide where possible, especially in the PPU, and the comments quote from it often.
-
-Thanks to Michael Fogleman's https://github.com/fogleman/nes for getting me unstuck at several points.
+The code aims to follow the explanations from the [NES dev wiki](https://wiki.nesdev.com/w/index.php/NES_reference_guide) where possible, especially in the PPU, and the comments quote from it often. Thanks to everyone who contributes to that wiki/forum, and to Michael Fogleman's [NES](https://github.com/fogleman/nes) and Scott Ferguson's [Fergulator](https://github.com/scottferg/Fergulator) for getting me unstuck at several points.
 
 ## To do:
 
