@@ -119,8 +119,19 @@ impl super::Cpu {
     }
 
     pub fn brk(&mut self, _address: usize, _mode: Mode) {
-        self.push((self.PC >> 8) as u8); // push high byte
-        self.push((self.PC & 0xFF) as u8); // push low byte
+        // instr_test-v5/rom_singles/15-brk.nes and instr_test-v5/rom_singles/16-special.nes:
+        // using self.PC + 1 in these next two lines allows these tests to pass.
+        // I'm not sure why that's necessary as implied addressing mode is only supposed to consume 1 byte,
+        // but the error message from 16-special.nes said "BRK should push address BRK + 2"
+
+        // Aha! From http://nesdev.com/the%20%27B%27%20flag%20&%20BRK%20instruction.txt:
+        // Regardless of what ANY 6502 documentation says, BRK is a 2 byte opcode. The
+        // first is #$00, and the second is a padding byte. This explains why interrupt
+        // routines called by BRK always return 2 bytes after the actual BRK opcode,
+        // and not just 1.
+
+        self.push(((self.PC + 1) >> 8) as u8); // push high byte
+        self.push(((self.PC + 1) & 0xFF) as u8); // push low byte
         self.push(self.P | 0b00110000); // push status register with break bits set
         self.P |= INTERRUPT_DISABLE_FLAG; // set interrupt disable flag
         self.PC = ((self.read(IRQ_VECTOR + 1) as usize) << 8) // set program counter to IRQ/BRK vector, taking high byte
@@ -326,24 +337,25 @@ impl super::Cpu {
 
     pub fn plp(&mut self, _address: usize, _mode: Mode) {
         self.clock += 2;
-        let status = self.pop();
-        // for each bit in the popped status, if it's 1,
-        // set that bit of self.P to 1. if it's 0, set that 
-        // bit of self.P to 0. 
-        for i in 0..=7 {
-            if i == 4 || i == 5 {
-                continue; // ignore B flags
-            }
-            let bit = if status & (1 << i) == 0 {0} else {1};
-            if bit != 0 {
-                self.P |= 1 << i;
-            } else {
-                self.P &= 0xFF - (1 << i);
-            }
-        }
-        
-        self.P |= 1 << 5; // turn on bit 5
-        self.P &= 0xFF - (1 << 4); // and turn off bit 4 because god knows why
+        self.P = self.pop();
+        // TODO: figure out exactly what's supposed to happen here
+        // let status = self.pop();
+        // // for each bit in the popped status, if it's 1,
+        // // set that bit of self.P to 1. if it's 0, set that
+        // // bit of self.P to 0.
+        // for i in 0..=7 {
+        //     if i == 4 || i == 5 {
+        //         continue; // ignore B flags
+        //     }
+        //     let bit = if status & (1 << i) == 0 {0} else {1};
+        //     if bit != 0 {
+        //         self.P |= 1 << i;
+        //     } else {
+        //         self.P &= 0xFF - (1 << i);
+        //     }
+        // }
+        // self.P |= 1 << 5; // turn on bit 5
+        // self.P &= 0xFF - (1 << 4); // and turn off bit 4 because god knows why
     }
 
     pub fn rla(&mut self, _address: usize, _mode: Mode) {

@@ -1,6 +1,6 @@
 extern crate sdl2;
 
-use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use sdl2::audio::AudioSpecDesired;
 
 pub fn initialize(context: &sdl2::Sdl) -> Result<sdl2::audio::AudioQueue<f32>, String> {
     let audio_subsystem = context.audio()?;

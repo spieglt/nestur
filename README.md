@@ -4,13 +4,9 @@ This is an NES emulator and a work in progress. The CPU and PPU work, though the
 
 - One dependency (SDL)
 
-- One line of `unsafe` (`std::mem::transmute::<u8>() -> i8`)
-
 - NTSC timing
 
 <img src="pics/smb.png" width=600>
-
-<sup>(Warning: this pipe currently takes you to an empty room, it's not the only one, and I don't know why.)</sup>
 
 ## Controls:
 ```

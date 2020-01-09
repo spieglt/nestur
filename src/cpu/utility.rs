@@ -27,8 +27,10 @@ impl super::Cpu {
                 self.PC += decoded_offset;
             },
             false => {
-                let decoded_offset = (-offset) as usize;
-                self.PC -= decoded_offset;
+                // instr_test-v5/rom_singles/11-stack.nes:
+                // letting decoded_offset be (-offset) as usize was allowing for overflow if offset was -128/0b10000000
+                let decoded_offset = (-offset) as u8;
+                self.PC -= decoded_offset as usize;
             },
         }
     }
@@ -46,7 +48,7 @@ impl super::Cpu {
     }
 
     pub fn branch(&mut self, unsigned_offset: u8) {
-        let offset: i8 = u8_to_i8(unsigned_offset);
+        let offset = unsigned_offset as i8;
         self.clock += 1;
         let old_addr = self.PC;
         self.add_offset_to_pc(offset);
@@ -92,8 +94,4 @@ impl super::Cpu {
         }
     }
 
-}
-
-pub fn u8_to_i8(offset: u8) -> i8 {
-    unsafe { std::mem::transmute(offset) }
 }

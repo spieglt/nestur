@@ -83,8 +83,6 @@ pub struct Cpu {
     pub strobe: u8,
     pub button_states: u8, // Player 1 controller
     button_number: u8,
-
-    more: usize,
 }
 
 impl Cpu {
@@ -104,7 +102,6 @@ impl Cpu {
             strobe: 0,
             button_states: 0,
             button_number: 0,
-            more: 0,
             opcode_table: vec![
         //         00        01        02        03        04        05        06        07        08        09        0A        0B        0C        0D        0E        0F
         /*00*/  Cpu::brk, Cpu::ora, Cpu::bad, Cpu::slo, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo, Cpu::php, Cpu::ora, Cpu::asl, Cpu::nop, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo,  /*00*/
@@ -172,46 +169,9 @@ impl Cpu {
 
         // get addressing mode
         let mode = self.mode_table[opcode].clone();
-        let (address_func, num_bytes) = mode.get();
+        let (address_func, _num_bytes) = mode.get();
         let address = address_func(self);
-
-        // debugging
-        // assert!(self.memory_at(0xAD79, 141) == UNDERGROUND_LEVEL.to_vec() && self.memory_at(0xA133, 45) == UNDERGROUND_ENEMIES.to_vec());
-        // let pc = self.PC;
-        // if address == 0x06D6 {
-        //     // let mem = self.memory_at(0xAD79, 141);
-        //     // println!("memory at 0xAD79: {:02X?}", mem);
-        //     println!("===========================\n0x{:04X} {:?}", address, mode);
-        //     if self.more == 0 {
-        //         self.more += 24;
-        //     }
-        // }
-        // if pc == 0xB1E5 {
-        //     println!("===========================");
-        //     if self.more == 0 {
-        //         self.more += 24;
-        //     }
-        // }
-        // if self.more > 0 {
-        //     let operands = match num_bytes {
-        //         1 => "     ".to_string(),
-        //         2 => format!("{:02X}   ", self.read(pc + 1)),
-        //         3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
-        //         _ => "error".to_string(),
-        //     };
-        //     print!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-        //         pc, self.read(pc), operands, OPCODE_DISPLAY_NAMES[opcode],
-        //         self.A, self.X, self.Y, self.P, self.S,
-        //     );
-        //     // let mut zpg = Vec::<u8>::new();
-        //     // for i in 0..32 {
-        //     //     zpg.push(self.read(i));
-        //     // }
-        //     // print!(" zpg: {:x?}", zpg);
-        //     print!("\n");
-        //     self.more -= 1;
-        // }
-
+        // self._debug(_num_bytes, opcode);
         // advance program counter according to how many bytes that instruction operated on
         self.advance_pc(mode);
         // look up instruction in table and execute
@@ -220,14 +180,6 @@ impl Cpu {
         // return how many cycles it took
         self.clock - clock
     }
-
-    pub fn memory_at(&mut self, address: usize, amount: usize) -> Vec<u8> {
-        let mut ret = vec![];
-        for i in 0..amount {
-            ret.push(self.read(address+i));
-        }
-        ret
-    } 
 
     // memory interface
     pub fn read(&mut self, address: usize) -> u8 {
@@ -249,23 +201,6 @@ impl Cpu {
 
     // memory interface
     fn write(&mut self, address: usize, val: u8) {
-        // if address == 0x06D6 {
-        //     println!("writing 0x{:02X} to 0x{:04X}", val, address);
-        // }
-
-        let vars = vec![
-            ("PlayerEntranceCtrl", 0x0710),
-            ("AltEntranceControl", 0x0752),
-            ("EntrancePage", 0x0751),
-            ("AreaPointer", 0x0750),
-            ("AreaAddrsLOffset", 0x074f),
-        ];
-        for i in vars.iter() {
-            if i.1 == address {
-                println!("writing 0x{:02X} to {}", val, i.0);
-            }
-        }
-
         match address {
             0x0000..=0x1FFF => self.mem[address % 0x0800] = val,
             0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),
@@ -336,8 +271,28 @@ impl Cpu {
         }
     }
 
-}
+    fn _debug(&mut self, num_bytes: usize, opcode: usize) {
+        let pc = self.PC;
+        let operands = match num_bytes {
+            1 => "     ".to_string(),
+            2 => format!("{:02X}   ", self.read(pc + 1)),
+            3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
+            _ => "error".to_string(),
+        };
+        println!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+            pc, self.read(pc), operands, _OPCODE_DISPLAY_NAMES[opcode],
+            self.A, self.X, self.Y, self.P, self.S,
+        );
+    }
 
+    pub fn _memory_at(&mut self, address: usize, amount: usize) -> Vec<u8> {
+        let mut ret = vec![];
+        for i in 0..amount {
+            ret.push(self.read(address+i));
+        }
+        ret
+    }
+}
 
 /*
 Address range 	Size 	Device
@@ -353,7 +308,7 @@ $4020-$FFFF 	$BFE0 	Cartridge space: PRG ROM, PRG RAM, and mapper registers (See
 */
 
 // For debug output
-const OPCODE_DISPLAY_NAMES: [&str; 256] = [
+const _OPCODE_DISPLAY_NAMES: [&str; 256] = [
 	"BRK", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
 	"PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
 	"BPL", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
@@ -387,21 +342,3 @@ const OPCODE_DISPLAY_NAMES: [&str; 256] = [
 	"BEQ", "SBC", "BAD", "ISC", "NOP", "SBC", "INC", "ISC",
     "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
 ];
-
-// const UNDERGROUND_LEVEL: [u8; 141] = [
-//     0x48, 0x01, 0x0e, 0x01, 0x00, 0x5a, 0x3e, 0x06, 0x45, 0x46, 0x47, 0x46, 0x53, 0x44, 0xae, 0x01,
-//     0xdf, 0x4a, 0x4d, 0xc7, 0x0e, 0x81, 0x00, 0x5a, 0x2e, 0x04, 0x37, 0x28, 0x3a, 0x48, 0x46, 0x47,
-//     0xc7, 0x07, 0xce, 0x0f, 0xdf, 0x4a, 0x4d, 0xc7, 0x0e, 0x81, 0x00, 0x5a, 0x33, 0x53, 0x43, 0x51,
-//     0x46, 0x40, 0x47, 0x50, 0x53, 0x04, 0x55, 0x40, 0x56, 0x50, 0x62, 0x43, 0x64, 0x40, 0x65, 0x50,
-//     0x71, 0x41, 0x73, 0x51, 0x83, 0x51, 0x94, 0x40, 0x95, 0x50, 0xa3, 0x50, 0xa5, 0x40, 0xa6, 0x50,
-//     0xb3, 0x51, 0xb6, 0x40, 0xb7, 0x50, 0xc3, 0x53, 0xdf, 0x4a, 0x4d, 0xc7, 0x0e, 0x81, 0x00, 0x5a,
-//     0x2e, 0x02, 0x36, 0x47, 0x37, 0x52, 0x3a, 0x49, 0x47, 0x25, 0xa7, 0x52, 0xd7, 0x04, 0xdf, 0x4a,
-//     0x4d, 0xc7, 0x0e, 0x81, 0x00, 0x5a, 0x3e, 0x02, 0x44, 0x51, 0x53, 0x44, 0x54, 0x44, 0x55, 0x24,
-//     0xa1, 0x54, 0xae, 0x01, 0xb4, 0x21, 0xdf, 0x4a, 0xe5, 0x07, 0x4d, 0xc7, 0xfd,
-// ];
-
-// const UNDERGROUND_ENEMIES: [u8; 45] = [
-//     0x1e, 0xa5, 0x0a, 0x2e, 0x28, 0x27, 0x2e, 0x33, 0xc7, 0x0f, 0x03, 0x1e, 0x40, 0x07, 0x2e, 0x30,
-//     0xe7, 0x0f, 0x05, 0x1e, 0x24, 0x44, 0x0f, 0x07, 0x1e, 0x22, 0x6a, 0x2e, 0x23, 0xab, 0x0f, 0x09,
-//     0x1e, 0x41, 0x68, 0x1e, 0x2a, 0x8a, 0x2e, 0x23, 0xa2, 0x2e, 0x32, 0xea, 0xff,
-// ];
