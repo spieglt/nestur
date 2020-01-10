@@ -1,3 +1,9 @@
+use super::Cartridge;
+
+pub struct Nrom {
+    cart: Cartridge,
+}
+
 
 pub fn nrom_cpu(cpu: &mut crate::cpu::Cpu, address: usize, writing: bool) -> Option<&mut u8> {
     // PRG-ROM, not -RAM

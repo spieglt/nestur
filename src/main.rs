@@ -124,7 +124,8 @@ fn main() -> Result<(), String> {
 
 TODO:
 - common mappers
-- DMC audio channel, high- and low-pass filters, refactor envelope
+- untangle CPU and PPU
+- DMC audio channel, high- and low-pass filters, refactor envelope, fix static
 - name audio variables (dividers, counters, etc.) more consistently
 - battery-backed RAM solution
 - GUI? drag and drop ROMs?

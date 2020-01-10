@@ -2,6 +2,10 @@ mod addressing_modes;
 mod opcodes;
 mod utility;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+use crate::cartridge::Mapper;
+
 // RAM locations
 const STACK_OFFSET: usize = 0x100;
 const NMI_VECTOR: usize = 0xFFFA;
@@ -70,8 +74,9 @@ pub struct Cpu {
     mode_table: Vec<Mode>,
 
     // cartridge data
-    pub prg_rom: Vec<Vec<u8>>, // one 16 KiB chunk for each specified in iNES header
-    mapper_func: crate::cartridge::CpuMapperFunc,
+    mapper: Rc<RefCell<dyn Mapper>>,
+    // pub prg_rom: Vec<Vec<u8>>, // one 16 KiB chunk for each specified in iNES header
+    // mapper_func: crate::cartridge::CpuMapperFunc,
 
     // ppu
     pub ppu: super::Ppu,
@@ -86,7 +91,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(cart: &super::Cartridge, ppu: super::Ppu, apu: super::Apu) -> Self {
+    pub fn new(mapper: Rc<RefCell<dyn Mapper>>, ppu: super::Ppu, apu: super::Apu) -> Self {
         let mut cpu = Cpu{
             mem: vec![0; 0x2000],
             A: 0, X: 0, Y: 0,
@@ -95,8 +100,9 @@ impl Cpu {
             P: 0x24, // TODO: change this back to 0x34? nestest.nes ROM has it as 0x24 at start.
             clock: 0,
             delay: 0,
-            prg_rom: cart.prg_rom.clone(),
-            mapper_func: cart.cpu_mapper_func,
+            mapper: mapper,
+            // prg_rom: cart.prg_rom.clone(),
+            // mapper_func: cart.cpu_mapper_func,
             ppu: ppu,
             apu: apu,
             strobe: 0,

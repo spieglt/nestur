@@ -1,7 +1,18 @@
-mod mappers;
+mod nrom;
 
-use mappers::get_mapper_funcs;
 use std::io::Read;
+
+pub trait Mapper {
+    fn read(&mut self, address: usize) -> u8;
+    fn write(&mut self, address: usize, value: u8);
+}
+
+pub enum Mirror {
+    LowBank,
+    HighBank,
+    Horizontal,
+    Vertical,
+}
 
 // To avoid separate read and write functions for every mapper, the mapper functions returns a reference to the CPU or PPU's own
 // byte of memory, which the calling method can dereference to read or set the value.
