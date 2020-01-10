@@ -198,7 +198,8 @@ impl Cpu {
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
             0x4020..=0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
-                *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads.
+                // *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads.
+                self.mapper.borrow_mut().read(address)
             },
             _ => panic!("invalid read from 0x{:02x}", address),
         };
@@ -215,10 +216,11 @@ impl Cpu {
             0x4000..=0x4017 => self.apu.write_reg(address, val), // APU stuff
             0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
             0x4020..=0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
-                match (self.mapper_func)(self, address, true) {
-                    Some(loc) => *loc = val,
-                    None => (),
-                };
+                self.mapper.borrow_mut().write(address, val)
+                // match (self.mapper_func)(self, address, true) {
+                //     Some(loc) => *loc = val,
+                //     None => (),
+                // };
             },
             _ => panic!("invalid write to {:02x}", address),
         }

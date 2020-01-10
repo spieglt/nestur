@@ -1,14 +1,17 @@
+use crate::cartridge::Mirror;
+
 impl super::Ppu {
     
     pub fn read(&mut self, addr: usize) -> u8 {
         let address = addr % 0x4000;
         match addr {
             0x0000..=0x1FFF => {
-                if self.pattern_tables.len() > 0 {
-                    *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads
-                } else {
-                    0
-                }
+                self.mapper.borrow_mut().read(address)
+                // if self.pattern_tables.len() > 0 {
+                //     *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads
+                // } else {
+                //     0
+                // }
             },
             0x2000..=0x3EFF => self.read_nametable(address),
             0x3F00..=0x3FFF => {
@@ -24,10 +27,11 @@ impl super::Ppu {
         let address = addr % 0x4000;
         match addr {
             0x0000..=0x1FFF => {
-                match (self.mapper_func)(self, address, true) {
-                    Some(loc) => *loc = value,
-                    None => (),
-                }
+                self.mapper.borrow_mut().write(address, value);
+                // match (self.mapper_func)(self, address, true) {
+                //     Some(loc) => *loc = value,
+                //     None => (),
+                // }
             },
             0x2000..=0x3EFF => self.write_nametable(address, value),
             0x3F00..=0x3FFF => {
@@ -63,7 +67,7 @@ impl super::Ppu {
     fn read_nametable(&mut self, address: usize) -> u8 {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        if self.mirroring == 0 { // horizontal
+        if self.mapper.borrow_mut().get_mirroring() == Mirror::Horizontal {
             match base {
                 0x0000..=0x07FF => {
                     self.nametable_0[offset]
@@ -89,7 +93,7 @@ impl super::Ppu {
     fn write_nametable(&mut self, address: usize, value: u8) {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        if self.mirroring == 0 { // horizontal
+        if self.mapper.borrow_mut().get_mirroring() == Mirror::Horizontal { // horizontal
             match base {
                 0x0000..=0x07FF => {
                     self.nametable_0[offset] = value;

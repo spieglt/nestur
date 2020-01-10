@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 fn main() {
-    let mapper = Rc::new(RefCell::new(Mmc1{a:32}));
+    let mapper = Rc::new(RefCell::new(Box::new(Mmc1{a:32})));
     
     let ppu = Ppu{mapper: mapper.clone()};
     let cpu = Cpu{mapper: mapper.clone()};

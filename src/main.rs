@@ -11,10 +11,12 @@ mod audio;
 use cpu::Cpu;
 use ppu::Ppu;
 use apu::Apu;
-use cartridge::Cartridge;
+use cartridge::{get_mapper, Cartridge, Mapper};
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
@@ -39,10 +41,10 @@ fn main() -> Result<(), String> {
     audio_device.resume();
 
     // Initialize hardware components
-    let cart = Cartridge::new();
-    let ppu = Ppu::new(&cart);
+    let mapper = get_mapper();
+    let ppu = Ppu::new(mapper.clone());
     let apu = Apu::new();
-    let mut cpu = Cpu::new(&cart, ppu, apu);
+    let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
 
     // For throttling to 60 FPS
     let mut timer = Instant::now();

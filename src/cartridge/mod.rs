@@ -1,12 +1,20 @@
 mod nrom;
+mod mmc1;
 
+use nrom::Nrom;
+use mmc1::Mmc1;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::io::Read;
 
 pub trait Mapper {
     fn read(&mut self, address: usize) -> u8;
     fn write(&mut self, address: usize, value: u8);
+    fn get_mirroring(&mut self) -> Mirror;
 }
 
+#[derive(Copy, Clone, PartialEq)]
 pub enum Mirror {
     LowBank,
     HighBank,
@@ -19,10 +27,20 @@ pub enum Mirror {
 pub type CpuMapperFunc = fn(&mut crate::cpu::Cpu, usize, bool) -> Option<&mut u8>;
 pub type PpuMapperFunc = fn(&mut crate::ppu::Ppu, usize, bool) -> Option<&mut u8>;
 
+pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
+    let cart = Cartridge::new();
+    let num = cart.mapper_num;
+    match num {
+        0 => Rc::new(RefCell::new(Nrom::new(cart))),
+        1 => Rc::new(RefCell::new(Mmc1::new(cart))),
+        _ => panic!("unimplemented mapper: {}", num),
+    }
+}
+
 pub struct Cartridge {
     prg_rom_size: usize,
     chr_rom_size: usize,
-    pub mirroring: u8, // 0 horizontal, 1 vertical
+    pub mirroring: Mirror, // 0 horizontal, 1 vertical
     _bb_prg_ram_present: u8, // 1: Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory
     trainer_present: u8, // 1: 512-byte trainer at $7000-$71FF (stored before PRG data)
     _four_screen_vram: u8, // 1: Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM
@@ -32,8 +50,9 @@ pub struct Cartridge {
     pub chr_rom: Vec<Vec<u8>>, // 8 KiB chunks for PPU
 
     all_data: Vec<u8>,
-    pub cpu_mapper_func: CpuMapperFunc,
-    pub ppu_mapper_func: PpuMapperFunc,
+    mapper_num: u8,
+    // pub cpu_mapper_func: CpuMapperFunc,
+    // pub ppu_mapper_func: PpuMapperFunc,
 }
 
 impl Cartridge {
@@ -45,20 +64,21 @@ impl Cartridge {
         let mut data = vec![];
         f.read_to_end(&mut data).unwrap();
         assert!(data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "signature mismatch, not an iNES file");
-        let mapper = ((data[7] >> 4) << 4) + (data[6] >> 4);
-        let (cpu_mapper_func, ppu_mapper_func) = get_mapper_funcs(mapper);
+        let mapper_num = ((data[7] >> 4) << 4) + (data[6] >> 4);
+        // let (cpu_mapper_func, ppu_mapper_func) = get_mapper_funcs(mapper);
         let mut cart = Cartridge {
             prg_rom_size: data[4] as usize,
             chr_rom_size: data[5] as usize,
-            mirroring:           (data[6] & (1 << 0) != 0) as u8,
+            mirroring:         if data[6] & (1 << 0) == 0 {Mirror::Horizontal} else {Mirror::Vertical},
             _bb_prg_ram_present: (data[6] & (1 << 1) != 0) as u8,
             trainer_present:     (data[6] & (1 << 2) != 0) as u8,
             _four_screen_vram:   (data[6] & (1 << 3) != 0) as u8,
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             all_data: data,
-            cpu_mapper_func: cpu_mapper_func,
-            ppu_mapper_func: ppu_mapper_func,
+            mapper_num: mapper_num,
+            // cpu_mapper_func: cpu_mapper_func,
+            // ppu_mapper_func: ppu_mapper_func,
         };
         cart.fill();
         cart

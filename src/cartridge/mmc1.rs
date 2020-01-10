@@ -12,8 +12,18 @@ pub struct Mmc1 {
 }
 
 impl Mmc1 {
-    fn new(cart: Cartridge) -> Self {
-        Mmc1
+    pub fn new(cart: Cartridge) -> Self {
+        let m = cart.mirroring;
+        Mmc1 {
+            cart: cart,
+            step: 0,
+            shift_register: 0,
+            prg_low_bank: 0,
+            prg_high_bank: 0,
+            chr_low_bank: 0,
+            chr_high_bank: 0,
+            mirroring: m,
+        }
     }
 }
 
@@ -24,5 +34,9 @@ impl Mapper for Mmc1 {
 
     fn write(&mut self, address: usize, value: u8) {
 
+    }
+
+    fn get_mirroring(&mut self) -> Mirror {
+        self.mirroring
     }
 }
