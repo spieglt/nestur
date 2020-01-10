@@ -19,9 +19,6 @@ pub struct Ppu {
 
     // Cartridge things
     pub mapper: Rc<RefCell<dyn Mapper>>,
-    // pub pattern_tables: Vec<Vec<u8>>, // CHR-ROM, one 8 KiB chunk for each specified in iNES header
-    // mapper_func: crate::cartridge::PpuMapperFunc,
-    // mirroring: u8, // 0: horizontal, 1: vertical
 
     // Each nametable byte is a reference to the start of an 8-byte sequence in the pattern table.
     // That sequence represents an 8x8 tile, from top row to bottom.
@@ -100,9 +97,6 @@ impl Ppu {
             x:                             0,
             w:                             0,
             mapper:                        mapper,
-            // pattern_tables:                cart.chr_rom.clone(),
-            // mapper_func:                   cart.ppu_mapper_func,
-            // mirroring:                     cart.mirroring,
             nametable_0:                   vec![0u8; 0x0400],
             nametable_1:                   vec![0u8; 0x0400],
             nametable_2:                   vec![0u8; 0x0400],

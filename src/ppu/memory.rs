@@ -5,14 +5,7 @@ impl super::Ppu {
     pub fn read(&mut self, addr: usize) -> u8 {
         let address = addr % 0x4000;
         match addr {
-            0x0000..=0x1FFF => {
-                self.mapper.borrow_mut().read(address)
-                // if self.pattern_tables.len() > 0 {
-                //     *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads
-                // } else {
-                //     0
-                // }
-            },
+            0x0000..=0x1FFF => self.mapper.borrow_mut().read(address),
             0x2000..=0x3EFF => self.read_nametable(address),
             0x3F00..=0x3FFF => {
                 let a = address % 0x0020;
@@ -26,13 +19,7 @@ impl super::Ppu {
     pub fn write(&mut self, addr: usize, value: u8) {
         let address = addr % 0x4000;
         match addr {
-            0x0000..=0x1FFF => {
-                self.mapper.borrow_mut().write(address, value);
-                // match (self.mapper_func)(self, address, true) {
-                //     Some(loc) => *loc = value,
-                //     None => (),
-                // }
-            },
+            0x0000..=0x1FFF => self.mapper.borrow_mut().write(address, value),
             0x2000..=0x3EFF => self.write_nametable(address, value),
             0x3F00..=0x3FFF => {
                 // I did not read this closely enough for a long time.

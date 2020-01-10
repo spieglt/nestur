@@ -14,7 +14,7 @@ pub trait Mapper {
     fn get_mirroring(&mut self) -> Mirror;
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum Mirror {
     LowBank,
     HighBank,
@@ -51,8 +51,6 @@ pub struct Cartridge {
 
     all_data: Vec<u8>,
     mapper_num: u8,
-    // pub cpu_mapper_func: CpuMapperFunc,
-    // pub ppu_mapper_func: PpuMapperFunc,
 }
 
 impl Cartridge {
@@ -65,7 +63,6 @@ impl Cartridge {
         f.read_to_end(&mut data).unwrap();
         assert!(data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "signature mismatch, not an iNES file");
         let mapper_num = ((data[7] >> 4) << 4) + (data[6] >> 4);
-        // let (cpu_mapper_func, ppu_mapper_func) = get_mapper_funcs(mapper);
         let mut cart = Cartridge {
             prg_rom_size: data[4] as usize,
             chr_rom_size: data[5] as usize,
@@ -77,8 +74,6 @@ impl Cartridge {
             chr_rom: Vec::new(),
             all_data: data,
             mapper_num: mapper_num,
-            // cpu_mapper_func: cpu_mapper_func,
-            // ppu_mapper_func: ppu_mapper_func,
         };
         cart.fill();
         cart

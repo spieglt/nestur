@@ -75,8 +75,6 @@ pub struct Cpu {
 
     // cartridge data
     mapper: Rc<RefCell<dyn Mapper>>,
-    // pub prg_rom: Vec<Vec<u8>>, // one 16 KiB chunk for each specified in iNES header
-    // mapper_func: crate::cartridge::CpuMapperFunc,
 
     // ppu
     pub ppu: super::Ppu,
@@ -101,8 +99,6 @@ impl Cpu {
             clock: 0,
             delay: 0,
             mapper: mapper,
-            // prg_rom: cart.prg_rom.clone(),
-            // mapper_func: cart.cpu_mapper_func,
             ppu: ppu,
             apu: apu,
             strobe: 0,
@@ -197,10 +193,7 @@ impl Cpu {
             0x4016          => self.read_controller(),
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => {  // Cartridge space: PRG ROM, PRG RAM, and mapper registers
-                // *(self.mapper_func)(self, address, false).unwrap() // unwrapping because mapper funcs won't return None for reads.
-                self.mapper.borrow_mut().read(address)
-            },
+            0x4020..=0xFFFF => self.mapper.borrow_mut().read(address),
             _ => panic!("invalid read from 0x{:02x}", address),
         };
         val
@@ -213,15 +206,9 @@ impl Cpu {
             0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),
             0x4014          => self.write_ppu_reg(8, val),
             0x4016          => self.write_controller(val),
-            0x4000..=0x4017 => self.apu.write_reg(address, val), // APU stuff
+            0x4000..=0x4017 => self.apu.write_reg(address, val),
             0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => {   // Cartridge space: PRG ROM, PRG RAM, and mapper registers
-                self.mapper.borrow_mut().write(address, val)
-                // match (self.mapper_func)(self, address, true) {
-                //     Some(loc) => *loc = val,
-                //     None => (),
-                // };
-            },
+            0x4020..=0xFFFF => self.mapper.borrow_mut().write(address, val),
             _ => panic!("invalid write to {:02x}", address),
         }
     }
