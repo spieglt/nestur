@@ -114,7 +114,6 @@ fn main() -> Result<(), String> {
 
             println!("samples per second: {}", sps);
             sps = 0;
-
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();

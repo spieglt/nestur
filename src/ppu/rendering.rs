@@ -142,12 +142,6 @@ impl super::Ppu {
             let mut low_bit  = 0;
             let mut high_bit = 0;
             let mut secondary_index = 0;
-            // Every cycle, the 8 x-position counters for the sprites are decremented by one.
-            for i in 0..self.num_sprites {
-                if self.sprite_counters[i] > 0 {
-                    self.sprite_counters[i] -= 1;
-                }
-            }
             for i in 0..self.num_sprites {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
@@ -167,6 +161,12 @@ impl super::Ppu {
                 if self.sprite_counters[i] == 0 {
                     self.sprite_pattern_table_srs[i].0 <<= 1;
                     self.sprite_pattern_table_srs[i].1 <<= 1;
+                }
+            }
+            // Every cycle, the 8 x-position counters for the sprites are decremented by one.
+            for i in 0..self.num_sprites {
+                if self.sprite_counters[i] > 0 {
+                    self.sprite_counters[i] -= 1;
                 }
             }
             ((high_bit << 1) | low_bit, secondary_index)
@@ -193,6 +193,7 @@ impl super::Ppu {
             }
         }
         self.num_sprites = sprite_count;
+
     }
 
     pub fn fetch_sprites(&mut self) {
@@ -201,7 +202,7 @@ impl super::Ppu {
             let sprite_y_position = self.secondary_oam[(4*i)+0] as usize; // byte 0 of sprite, sprite's vertical position on screen
             let sprite_tile_index = self.secondary_oam[(4*i)+1] as usize; // byte 1 of sprite, sprite's location within pattern table
             let sprite_attributes = self.secondary_oam[(4*i)+2];          // byte 2 of sprite, sprite's palette, priority, and flip attributes
-            let sprite_x_position = self.secondary_oam[(4*i)+3] + 1;      // byte 3 of sprite, sprite's horizontal position on screen
+            let sprite_x_position = self.secondary_oam[(4*i)+3];          // byte 3 of sprite, sprite's horizontal position on screen
             // For 8x8 sprites, this is the tile number of this sprite within the pattern table selected in bit 3 of PPUCTRL ($2000).
             if self.sprite_size == 8 {
                 address = self.sprite_pattern_table_base;
