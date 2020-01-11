@@ -14,7 +14,7 @@ pub trait Mapper {
     fn get_mirroring(&mut self) -> Mirror;
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Mirror {
     LowBank,
     HighBank,

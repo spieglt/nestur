@@ -22,10 +22,12 @@ pub struct Ppu {
 
     // Each nametable byte is a reference to the start of an 8-byte sequence in the pattern table.
     // That sequence represents an 8x8 tile, from top row to bottom.
-    nametable_0: Vec<u8>, // Nametable 0, 0x2000
-    nametable_1: Vec<u8>, // Nametable 1, 0x2400
-    nametable_2: Vec<u8>, // Nametable 2, 0x2800
-    nametable_3: Vec<u8>, // Nametable 3, 0x2C00
+    // First interpretation of how nametables work was wrong. There are two banks. (Or up to 4 on some games.)
+    // Pictures on http://wiki.nesdev.com/w/index.php/Mirroring refer to them as A and B.
+    // http://wiki.nesdev.com/w/index.php/MMC1 calls them higher and lower.
+    // They can be mirrored at certain memory ranges.
+    nametable_low_bank: Vec<u8>,
+    nametable_high_bank: Vec<u8>,
 
     // The palette shared by both background and sprites. 
     // Consists of 32 bytes, each of which represents an index into the global PALETTE_TABLE.
@@ -97,10 +99,8 @@ impl Ppu {
             x:                             0,
             w:                             0,
             mapper:                        mapper,
-            nametable_0:                   vec![0u8; 0x0400],
-            nametable_1:                   vec![0u8; 0x0400],
-            nametable_2:                   vec![0u8; 0x0400],
-            nametable_3:                   vec![0u8; 0x0400],
+            nametable_low_bank:            vec![0u8; 0x0400],
+            nametable_high_bank:           vec![0u8; 0x0400],
             palette_ram:                   vec![0u8; 0x0020],
             background_pattern_sr_low:     0,
             background_pattern_sr_high:    0,

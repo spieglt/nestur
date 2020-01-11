@@ -110,11 +110,11 @@ fn main() -> Result<(), String> {
         // calculate fps
         let now = Instant::now();
         if now > fps_timer + Duration::from_secs(1) {
-            println!("fps: {}", fps);
+            // println!("fps: {}", fps);
             fps = 0;
             fps_timer = now;
 
-            println!("samples per second: {}", sps);
+            // println!("samples per second: {}", sps);
             sps = 0;
         }
     }
@@ -125,6 +125,7 @@ fn main() -> Result<(), String> {
 /*
 
 TODO:
+- fix 8x16 sprites
 - common mappers
 - untangle CPU and PPU
 - DMC audio channel, high- and low-pass filters, refactor envelope, fix static

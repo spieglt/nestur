@@ -207,19 +207,35 @@ impl super::Ppu {
             if self.sprite_size == 8 {
                 address = self.sprite_pattern_table_base;
                 address += sprite_tile_index*16;
+                address += if sprite_attributes & (1<<7) == 0 {
+                    self.scanline - sprite_y_position
+                } else {
+                    self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
+                };
             // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number. 
             } else {
                 address = if sprite_tile_index & 1 == 0 { 0x0 } else { 0x1000 };
-                address += (sprite_tile_index*16) & (0xFF - 1); // turn off bottom bit
+                address += (sprite_tile_index*16) & (0xFFFF - 1); // turn off bottom bit
+                let fine_y = if sprite_attributes & (1<<7) == 0 {
+                    self.scanline - sprite_y_position
+                } else {
+                    self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
+                };
+                if fine_y > 7 {
+                    address += 16;
+                    address += fine_y - 8;
+                } else {
+                    address += fine_y;
+                }
             }
-            let fine_y: usize;
+            // let fine_y: usize;
             // Handle vertical and horizontal flips, then write to shift registers
-            if sprite_attributes & (1<<7) == 0 { // if vertical flip bit not set
-                fine_y = self.scanline - sprite_y_position; // row-within-sprite offset is difference between current scanline and top of sprite
-            } else { // if flipped vertically
-                fine_y = self.sprite_size as usize - 1 - (self.scanline - sprite_y_position);
-            }
-            address += fine_y;
+            // if sprite_attributes & (1<<7) == 0 { // if vertical flip bit not set
+            //     fine_y = self.scanline - sprite_y_position; // row-within-sprite offset is difference between current scanline and top of sprite
+            // } else { // if flipped vertically
+            //     fine_y = self.sprite_size as usize - 1 - (self.scanline - sprite_y_position);
+            // }
+            // address += fine_y;
             let low_pattern_table_byte = self.read(address);
             let high_pattern_table_byte = self.read(address + 8);
             let mut shift_reg_vals = (0, 0);

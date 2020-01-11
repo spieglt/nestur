@@ -54,56 +54,50 @@ impl super::Ppu {
     fn read_nametable(&mut self, address: usize) -> u8 {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        if self.mapper.borrow_mut().get_mirroring() == Mirror::Horizontal {
-            match base {
-                0x0000..=0x07FF => {
-                    self.nametable_0[offset]
-                },
-                0x0800..=0x0FFF => {
-                    self.nametable_2[offset]
-                },
-                _ => panic!("panicked writing nametable base: {}", base),
-            }
-        } else { // vertical
-            match base {
-                0x0000..=0x03FF | 0x0800..=0x0BFF => {
-                    self.nametable_0[offset]
-                },
-                0x0400..=0x07FF | 0x0C00..=0x0FFF => {
-                    self.nametable_1[offset]
-                },
-                _ => panic!("panicked writing nametable base: {}", base),
-            }
+        match self.mapper.borrow_mut().get_mirroring() {
+            Mirror::LowBank => self.nametable_low_bank[offset],
+            Mirror::HighBank => self.nametable_high_bank[offset],
+            Mirror::Horizontal => {
+                match base {
+                    0x0000..=0x07FF => self.nametable_low_bank[offset],
+                    0x0800..=0x0FFF => self.nametable_high_bank[offset],
+                    _ => panic!("panicked reading nametable base: {}", base),
+                }
+            },
+            Mirror::Vertical => {
+                match base {
+                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_low_bank[offset],
+                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_high_bank[offset],
+                    _ => panic!("panicked reading nametable base: {}", base),
+                }
+            },
         }
     }
 
     fn write_nametable(&mut self, address: usize, value: u8) {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        if self.mapper.borrow_mut().get_mirroring() == Mirror::Horizontal { // horizontal
-            match base {
-                0x0000..=0x07FF => {
-                    self.nametable_0[offset] = value;
-                    self.nametable_1[offset] = value;
-                },
-                0x0800..=0x0FFF => {
-                    self.nametable_2[offset] = value;
-                    self.nametable_3[offset] = value;
-                },
-                _ => panic!("panicked writing nametable base: {}", base),
-            }
-        } else { // vertical
-            match base {
-                0x0000..=0x03FF | 0x0800..=0x0BFF => {
-                    self.nametable_0[offset] = value;
-                    self.nametable_2[offset] = value;
-                },
-                0x0400..=0x07FF | 0x0C00..=0x0FFF => {
-                    self.nametable_1[offset] = value;
-                    self.nametable_3[offset] = value;
-                },
-                _ => panic!("panicked writing nametable base: {}", base),
-            }
+        match self.mapper.borrow_mut().get_mirroring() {
+            Mirror::LowBank => {
+                self.nametable_low_bank[offset] = value;
+            },
+            Mirror::HighBank => {
+                self.nametable_high_bank[offset] = value;
+            },
+            Mirror::Horizontal => {
+                match base {
+                    0x0000..=0x07FF => self.nametable_low_bank[offset] = value,
+                    0x0800..=0x0FFF => self.nametable_high_bank[offset] = value,
+                    _ => panic!("panicked writing nametable base: {}", base),
+                }
+            },
+            Mirror::Vertical => {
+                match base {
+                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_low_bank[offset] = value,
+                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_high_bank[offset] = value,
+                    _ => panic!("panicked writing nametable base: {}", base),
+                }
+            },
         }
     }
 }
