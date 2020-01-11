@@ -1,12 +1,8 @@
 # nestur
 
-This is an NES emulator and a work in progress. The CPU, PPU, and APU mostly work, though there are still at least a couple bugs. I've mostly tested on Donkey Kong and Super Mario Bros. so far. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well.
+This is an NES emulator and a work in progress. There are still some minor bugs and the audio is kind of scratchy. I've mostly tested on Donkey Kong, Super Mario Bros., and Zelda so far. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well. SDL2 is the only dependency, it's NTSC timing, and contains no `unsafe` code.
 
-- One dependency (SDL)
-
-- NTSC timing
-
-<img src="pics/smb.png" width=600>
+<img src="pics/smb.png" width=350>  <img src="pics/zelda.png" width=350>
 
 ## Controls:
 ```
@@ -26,7 +22,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 ## To do:
 
-- More mappers (only NROM/mapper 0 implemented so far)
+- More mappers (only mappers 0 (NROM) and 1 (MMC1) implemented so far)
 
 - DMC audio channel, high- and low-pass filters, APU cleanup/timing fix
 
