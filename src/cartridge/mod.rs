@@ -22,11 +22,6 @@ pub enum Mirror {
     Vertical,
 }
 
-// To avoid separate read and write functions for every mapper, the mapper functions returns a reference to the CPU or PPU's own
-// byte of memory, which the calling method can dereference to read or set the value.
-pub type CpuMapperFunc = fn(&mut crate::cpu::Cpu, usize, bool) -> Option<&mut u8>;
-pub type PpuMapperFunc = fn(&mut crate::ppu::Ppu, usize, bool) -> Option<&mut u8>;
-
 pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
     let cart = Cartridge::new();
     let num = cart.mapper_num;

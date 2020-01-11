@@ -10,8 +10,6 @@ pub struct Mmc1 {
     prg_ram_bank: Vec<u8>, // CPU $6000-$7FFF
     prg_ram_enabled: bool,
 
-    prg_low_bank:   usize, // CPU $8000-$BFFF
-    prg_high_bank:  usize, // CPU $C000-$FFFF
     prg_bank_mode: u8,
     prg_bank_select: usize, // selects among the PRG-RAM chunks in the cartridge
 
@@ -32,9 +30,7 @@ impl Mmc1 {
             control: 0,
             prg_ram_bank: vec![0; 0x2000],
             prg_ram_enabled: false,
-            prg_low_bank: 0,
-            prg_high_bank: 0,
-            prg_bank_mode: 3,
+            prg_bank_mode: 0,
             prg_bank_select: 0,
             chr_ram_bank: vec![0; 0x2000],
             chr_low_bank: 0,
@@ -56,7 +52,6 @@ impl Mmc1 {
             self.shift_register >>= 1;
             self.shift_register |= (value & 1) << 7;
             if self.step == 4 {
-                // println!("writing 0x{:X} to 0x{:04X}", self.shift_register, address);
                 // shift register values will be in top 5 bits, so cut it down to size before moving on to where it's used
                 self.shift_register >>= 3;
                 match address {

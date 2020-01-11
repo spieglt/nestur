@@ -2,14 +2,12 @@ use super::{Cartridge, Mapper, Mirror};
 
 pub struct Nrom {
     cart: Cartridge,
-    // mirroring: Mirror,
 }
 
 impl Nrom {
     pub fn new(cart: Cartridge) -> Self {
         Nrom{
             cart: cart,
-            // mirroring: cart.mirroring,
         }
     }
 }

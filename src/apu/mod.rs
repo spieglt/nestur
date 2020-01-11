@@ -105,7 +105,6 @@ impl Apu {
     }
 
     pub fn write_reg(&mut self, address: usize, value: u8) {
-        // println!("writing 0b{:08b} to 0x{:X}", value, address);
         match address {
             0x4000 => self.square1.write_duty(value),
             0x4001 => self.square1.write_sweep(value),

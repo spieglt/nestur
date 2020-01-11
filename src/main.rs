@@ -11,12 +11,10 @@ mod audio;
 use cpu::Cpu;
 use ppu::Ppu;
 use apu::Apu;
-use cartridge::{get_mapper, Cartridge, Mapper};
+use cartridge::get_mapper;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
@@ -110,11 +108,11 @@ fn main() -> Result<(), String> {
         // calculate fps
         let now = Instant::now();
         if now > fps_timer + Duration::from_secs(1) {
-            // println!("fps: {}", fps);
+            println!("fps: {}", fps);
             fps = 0;
             fps_timer = now;
 
-            // println!("samples per second: {}", sps);
+            println!("samples per second: {}", sps);
             sps = 0;
         }
     }
