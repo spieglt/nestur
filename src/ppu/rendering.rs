@@ -203,20 +203,22 @@ impl super::Ppu {
             let sprite_tile_index = self.secondary_oam[(4*i)+1] as usize; // byte 1 of sprite, sprite's location within pattern table
             let sprite_attributes = self.secondary_oam[(4*i)+2];          // byte 2 of sprite, sprite's palette, priority, and flip attributes
             let sprite_x_position = self.secondary_oam[(4*i)+3];          // byte 3 of sprite, sprite's horizontal position on screen
+            let flipped_vertically = sprite_attributes & (1<<7) != 0;
+            let flipped_horizontally = sprite_attributes & (1<<6) != 0;
             // For 8x8 sprites, this is the tile number of this sprite within the pattern table selected in bit 3 of PPUCTRL ($2000).
             if self.sprite_size == 8 {
                 address = self.sprite_pattern_table_base;
                 address += sprite_tile_index*16;
-                address += if sprite_attributes & (1<<7) == 0 {
-                    self.scanline - sprite_y_position
+                address += if !flipped_vertically {
+                    self.scanline - sprite_y_position // row-within-sprite offset is difference between current scanline and top of sprite
                 } else {
                     self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
                 };
             // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number. 
             } else {
                 address = if sprite_tile_index & 1 == 0 { 0x0 } else { 0x1000 };
-                address += (sprite_tile_index*16) & (0xFFFF - 1); // turn off bottom bit
-                let fine_y = if sprite_attributes & (1<<7) == 0 {
+                address += (sprite_tile_index & 0xFFFF-1) << 4; // turn off bottom bit BEFORE shifting
+                let fine_y = if !flipped_vertically {
                     self.scanline - sprite_y_position
                 } else {
                     self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
@@ -228,24 +230,16 @@ impl super::Ppu {
                     address += fine_y;
                 }
             }
-            // let fine_y: usize;
-            // Handle vertical and horizontal flips, then write to shift registers
-            // if sprite_attributes & (1<<7) == 0 { // if vertical flip bit not set
-            //     fine_y = self.scanline - sprite_y_position; // row-within-sprite offset is difference between current scanline and top of sprite
-            // } else { // if flipped vertically
-            //     fine_y = self.sprite_size as usize - 1 - (self.scanline - sprite_y_position);
-            // }
-            // address += fine_y;
             let low_pattern_table_byte = self.read(address);
             let high_pattern_table_byte = self.read(address + 8);
             let mut shift_reg_vals = (0, 0);
             for j in 0..8 {
                 let current_bits = (low_pattern_table_byte & (1 << j), high_pattern_table_byte & (1 << j));
-                if sprite_attributes & (1<<6) == 0 { // if horizontal flip bit not set
+                if !flipped_horizontally {
                     // just copy each bit in same order
                     shift_reg_vals.0 |= current_bits.0;
                     shift_reg_vals.1 |= current_bits.1;
-                } else { // if flipped horizontally
+                } else {
                     // get bit of pattern table byte, left shift it by 7 - bit position
                     shift_reg_vals.0 |= ((current_bits.0 != 0) as u8) << (7 - j);
                     shift_reg_vals.1 |= ((current_bits.1 != 0) as u8) << (7 - j);

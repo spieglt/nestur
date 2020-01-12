@@ -123,7 +123,6 @@ fn main() -> Result<(), String> {
 /*
 
 TODO:
-- fix zelda hearts
 - common mappers
 - untangle CPU and PPU
 - DMC audio channel, high- and low-pass filters, refactor envelope, fix static
