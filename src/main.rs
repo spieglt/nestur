@@ -79,11 +79,11 @@ fn main() -> Result<(), String> {
             if end_of_frame {
                 fps += 1; // keep track of how many frames we've rendered this second
                 draw_to_window(&mut texture, &mut canvas, &screen_buffer)?; // draw the buffer to the window with SDL
+                let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
+                b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
                 let now = Instant::now();
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
-                    let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
-                    b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();

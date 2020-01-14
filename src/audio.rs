@@ -40,12 +40,6 @@ impl AudioCallback for ApuSampler {
             // if we didn't have enough, decrease the ratio so we take more samples from the APU
             if l > target {
                 *b = b.split_off(target);
-                self.sample_ratio += 0.005;
-                // println!("raised ratio to {}", self.sample_ratio);
-            } else {
-                b.clear();
-                self.sample_ratio -= 0.05;
-                // println!("lowered ratio to {}", self.sample_ratio);
             }
         } else {
             println!("buffer empty!"); // happens when the callback fires twice between video frames
