@@ -1,5 +1,3 @@
-use std::time::{Instant, Duration};
-
 mod cpu;
 mod ppu;
 mod apu;
@@ -15,6 +13,8 @@ use cartridge::get_mapper;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
 
+use std::sync::{Arc, Mutex};
+use std::time::{Instant, Duration};
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
@@ -34,7 +34,10 @@ fn main() -> Result<(), String> {
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
     // Set up audio
-    let audio_device = audio::initialize(&sdl_context).expect("Could not create audio device");
+    let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
+    let apu_buffer = Arc::new(Mutex::new(Vec::<f32>::new())); // stays in this thread, receives raw samples between frames
+    let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
+    let audio_device = audio::initialize(&sdl_context, sdl_buffer).expect("Could not create audio device");
     let mut half_cycle = false;
     audio_device.resume();
 
@@ -48,7 +51,6 @@ fn main() -> Result<(), String> {
     let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
-    let mut sps = 0;
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -65,14 +67,7 @@ fn main() -> Result<(), String> {
             }
         }
         for _ in 0..apu_cycles {
-            match cpu.apu.clock() {
-                Some(sample) => {
-                    sps += 1;
-                    if sps < 44_100 {audio_device.queue(&vec![sample]);} // TODO: fix this
-                    // audio_device.queue(&vec![sample]);
-                },
-                None => (),
-            };
+            temp_buffer.push(cpu.apu.clock());
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
@@ -87,6 +82,8 @@ fn main() -> Result<(), String> {
                 let now = Instant::now();
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
+                    let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
+                    b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();
@@ -111,9 +108,6 @@ fn main() -> Result<(), String> {
             println!("fps: {}", fps);
             fps = 0;
             fps_timer = now;
-
-            println!("samples per second: {}", sps);
-            sps = 0;
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();
@@ -125,7 +119,7 @@ fn main() -> Result<(), String> {
 TODO:
 - common mappers
 - untangle CPU and PPU
-- DMC audio channel, high- and low-pass filters, refactor envelope, fix static
+- DMC audio channel, high- and low-pass filters, refactor envelope
 - name audio variables (dividers, counters, etc.) more consistently
 - battery-backed RAM solution
 - GUI? drag and drop ROMs?
@@ -135,9 +129,8 @@ TODO:
 
 Timing notes:
 The PPU is throttled to 60Hz by sleeping in the main loop. This locks the CPU to roughly its intended speed, 1.789773MHz NTSC. The APU runs at half that.
-The SDL audio device samples/outputs at 44,100Hz, so as long as the APU queues up 44,100 samples per second, it works.
-But it's not doing so evenly. If PPU runs faster than 60Hz, audio will get skipped, and if slower, audio will pop/have gaps.
-Need to probably lock everything to the APU but worried about checking time that often. Can do for some division of 44_100.
+The APU gives all of its samples to the SDL audio device, which takes them 60 times per second in batches of 735 (44,100/60). It selects the ones
+it needs at the proper interval and truncates its buffer.
 
 Failed tests from instr_test-v5/rom_singles/:
 3, immediate, Failed. Just unofficial instructions?

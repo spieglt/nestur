@@ -12,14 +12,9 @@ use dmc::DMC;
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
 // Length counter controls note durations.
 
-// We need to take a sample 44100 times per second. The CPU clocks (not steps) at 1.789773 MHz. Meaning the APU, going half as fast,
-// clocks 894,886.5 times per second. 894,886.5/44,100=20.29 APU clocks per audio sample.
-
 // TODO: organize APU structs
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
-const CYCLES_PER_SAMPLE: f32 = 894_886.5/44_100.0; // APU frequency over sample frequency. May need to turn this down slightly as it's outputting less than 44_100Hz.
-// const CYCLES_PER_SAMPLE: f32 = 20.0;
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
@@ -40,7 +35,6 @@ pub struct Apu {
     interrupt_inhibit: bool,
     frame_interrupt: bool,
     cycle: usize,
-    remainder: f32, // keep sample at 44100Hz
     pub trigger_irq: bool,
 }
 
@@ -63,14 +57,11 @@ impl Apu {
             interrupt_inhibit: false,
             frame_interrupt: false,
             cycle: 0,
-            remainder: 0_f32,
             trigger_irq: false,
         }
     }
 
-    pub fn clock(&mut self) -> Option<f32> {
-        let mut sample = None;
-
+    pub fn clock(&mut self) -> f32 {
         // Clock each channel
         self.square1.clock();
         self.square2.clock();
@@ -78,13 +69,6 @@ impl Apu {
         self.triangle.clock(); // TODO: hacky. clocking triangle twice because it runs every CPU cycle
         self.noise.clock();
         self.dmc.clock();
-
-        // Send sample to buffer if necessary
-        if self.remainder > CYCLES_PER_SAMPLE { 
-            sample = Some(self.mix());
-            self.remainder -= 20.0;
-        }
-        self.remainder += 1.0;
 
         // Step frame counter if necessary
         if FRAME_COUNTER_STEPS.contains(&self.cycle) {
@@ -95,7 +79,8 @@ impl Apu {
             self.cycle = 0;
         }
 
-        sample
+        // Send all samples to buffer, let the SDL2 audio callback take what it needs
+        self.mix()
     }
 
     fn mix(&self) -> f32 {
