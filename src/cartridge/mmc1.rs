@@ -34,7 +34,7 @@ impl Mmc1 {
             control: 0,
             prg_ram_bank: vec![0; 0x2000],
             prg_ram_enabled: false,
-            prg_bank_mode: 0,
+            prg_bank_mode: 3,
             prg_bank_select: 0,
             chr_ram_bank: vec![0; 0x2000],
             chr_low_bank: 0,

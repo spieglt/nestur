@@ -2,7 +2,7 @@
 
 This is an NES emulator and a work in progress. There are still some minor bugs and the audio is kind of scratchy. I've mostly tested on Donkey Kong, Super Mario Bros., and Zelda so far. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well. SDL2 is the only dependency, it's NTSC timing, and contains no `unsafe` code.
 
-<img src="pics/smb.png" width=350>  <img src="pics/zelda.png" width=350>
+<img src="pics/smb.png" width=350>  <img src="pics/zelda_dungeon.png" width=350>
 
 ## Controls:
 ```
