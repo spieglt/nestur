@@ -58,4 +58,7 @@ impl Mapper for Nrom {
     fn get_mirroring(&mut self) -> Mirror {
         self.cart.mirroring
     }
+
+    fn load_battery_backed_ram(&mut self) {}
+    fn save_battery_backed_ram(&self) {}
 }

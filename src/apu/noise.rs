@@ -1,26 +1,19 @@
+use super::envelope::Envelope;
 
 const NOISE_TABLE: [u16; 16] = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
 
 // $400E 	M---.PPPP 	Mode and period (write)
 // bit 7 	M--- ---- 	Mode flag 
 pub struct Noise {
-    pub sample: u16,
+    pub sample: u16, // output value that gets sent to the mixer
     pub enabled: bool,
-
-    envelope: u16, // constant volume/envelope period. reflects what was last written to $4000/$4004
-    envelope_divider: u16,
-    decay_counter: u16, // remainder of envelope divider
-    constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    start: bool, // restarts envelope
-
+    constant_volume_flag: bool,
+    mode: bool, // also called loop noise, bit 7 of $400E
     timer: u16,
     timer_period: u16,
-
     pub length_counter: u8,
-    length_counter_halt: bool,
-
     linear_feedback_sr: u16,
-    mode: bool, // also called loop noise, bit 7 of $400E
+    pub envelope: Envelope,
 }
 
 impl Noise {
@@ -28,17 +21,13 @@ impl Noise {
         Noise {
             sample: 0,
             enabled: false,
-            envelope: 0,
-            envelope_divider: 0,
-            decay_counter: 0,
             constant_volume_flag: false,
-            start: false,
+            mode: false,
             timer: 0,
             timer_period: 0,
             length_counter: 0,
-            length_counter_halt: false,
-            linear_feedback_sr: 1, // On power-up, the shift register is loaded with the value 1. 
-            mode: false, // also called loop noise, bit 7 of $400E
+            linear_feedback_sr: 1, // On power-up, the shift register is loaded with the value 1.
+            envelope: Envelope::new(),
         }
     }
 
@@ -53,9 +42,9 @@ impl Noise {
         self.sample = if self.linear_feedback_sr & 1 == 1 || self.length_counter == 0 {
             0
         } else if self.constant_volume_flag {
-            self.envelope
+            self.envelope.period
         } else {
-            self.decay_counter
+            self.envelope.decay_counter
         };
     }
 
@@ -73,45 +62,17 @@ impl Noise {
         self.linear_feedback_sr |= feedback << 14;
     }
 
-    pub fn clock_envelope(&mut self) {
-        // When clocked by the frame counter, one of two actions occurs:
-        // if the start flag is clear, the divider is clocked,
-        if !self.start {
-            self.clock_envelope_divider();
-        } else {
-            self.start = false; // otherwise the start flag is cleared,
-            self.decay_counter = 15; // the decay level counter is loaded with 15,
-            self.envelope_divider = self.envelope; // and the divider's period is immediately reloaded
-        }
-    }
-
-    fn clock_envelope_divider(&mut self) {
-        // When the divider is clocked while at 0, it is loaded with V and clocks the decay level counter.
-        if self.envelope_divider == 0 {
-            self.envelope_divider = self.envelope;
-            // Then one of two actions occurs: If the counter is non-zero, it is decremented,
-            if self.decay_counter != 0 {
-                self.decay_counter -= 1;
-            } else if self.length_counter_halt {
-                // otherwise if the loop flag is set, the decay level counter is loaded with 15.
-                self.decay_counter = 15;
-            }
-        } else {
-            self.envelope_divider -= 1;
-        }
-    }
-
     pub fn clock_length_counter(&mut self) {
-        if !(self.length_counter == 0 || self.length_counter_halt) {
+        if !(self.length_counter == 0 || self.envelope.length_counter_halt) {
             self.length_counter -= 1;
         }
     }
 
     // $400C
     pub fn write_envelope(&mut self, value: u8) {
-        self.length_counter_halt = (value >> 5) & 1 == 1;
+        self.envelope.length_counter_halt = (value >> 5) & 1 == 1;
         self.constant_volume_flag = (value >> 4) & 1 == 1;
-        self.envelope = value as u16 & 0b1111;
+        self.envelope.period = value as u16 & 0b1111;
     }
 
     // $400E
@@ -123,7 +84,7 @@ impl Noise {
     // $400F
     pub fn write_length_counter(&mut self, value: u8) {
         self.length_counter = value >> 3;
-        self.start = true;
+        self.envelope.start = true;
     }
 }
 

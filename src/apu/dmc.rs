@@ -11,8 +11,8 @@ impl DMC {
         DMC {
             sample: 0,
             enabled: false,
-            bytes_remaining: 0,
             interrupt: false,
+            bytes_remaining: 0,
             length_counter: 0,
         }
     }

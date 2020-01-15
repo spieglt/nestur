@@ -24,7 +24,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 - More mappers (only mappers 0 (NROM) and 1 (MMC1) implemented so far)
 
-- DMC audio channel, high- and low-pass filters, APU cleanup/timing fix
+- DMC audio channel, high- and low-pass filters
 
 - Save/load functionality and battery-backed RAM solution
 

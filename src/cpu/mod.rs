@@ -53,39 +53,28 @@ impl Mode {
 
 
 pub struct Cpu {
-    mem: Vec<u8>,
-    A: u8,         // accumulator
-    X: u8,         // general purpose
-    Y: u8,         // general purpose
-    PC: usize,     // 16-bit program counter
-    S: u8,         // stack pointer
-    P: u8,         // status
+    mem: Vec<u8>, // CPU's RAM, $0000-$1FFF
+    A: u8,        // accumulator
+    X: u8,        // general purpose
+    Y: u8,        // general purpose
+    PC: usize,    // 16-bit program counter
+    S: u8,        // stack pointer
+    P: u8,        // status
 
-    // number of ticks in current cycle
-    clock: u64,
+    clock: u64, // number of ticks in current cycle
+    delay: usize, // for skipping cycles during OAM DMA
 
-    // for skipping cycles during OAM DMA
-    delay: usize,
-
-    // function table
-    opcode_table: Vec<fn(&mut Self, usize, Mode)>,
-
-    // address mode table
-    mode_table: Vec<Mode>,
-
-    // cartridge data
-    mapper: Rc<RefCell<dyn Mapper>>,
-
-    // ppu
+    mapper: Rc<RefCell<dyn Mapper>>, // cartridge data
     pub ppu: super::Ppu,
-
-    // apu
     pub apu: super::Apu,
 
     // controller
-    pub strobe: u8,
+    pub strobe: u8, // signals to the controller that button inputs should be read
     pub button_states: u8, // Player 1 controller
-    button_number: u8,
+    button_number: u8, // counter that scans the bits of the input register serially
+
+    opcode_table: Vec<fn(&mut Self, usize, Mode)>, // function table
+    mode_table: Vec<Mode>, // address mode table
 }
 
 impl Cpu {
@@ -95,7 +84,7 @@ impl Cpu {
             A: 0, X: 0, Y: 0,
             PC: 0,
             S: 0xFD,
-            P: 0x24, // TODO: change this back to 0x34? nestest.nes ROM has it as 0x24 at start.
+            P: 0x34,
             clock: 0,
             delay: 0,
             mapper: mapper,

@@ -87,11 +87,11 @@ fn main() -> Result<(), String> {
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();
-                // listen for Esc or window close. TODO: does this prevent keyboard events from being handled?
+                // check for Esc or window close
                 for event in event_pump.poll_iter() {
                     match event {
                         Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
-                            => { break 'running },
+                            => break 'running,
                         _ => (),
                     }
                 }
@@ -111,6 +111,7 @@ fn main() -> Result<(), String> {
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();
+    mapper.borrow().save_battery_backed_ram();
     Ok(())
 }
 
@@ -118,10 +119,9 @@ fn main() -> Result<(), String> {
 
 TODO:
 - common mappers
-- untangle CPU and PPU
-- DMC audio channel, high- and low-pass filters, refactor envelope
-- name audio variables (dividers, counters, etc.) more consistently
-- battery-backed RAM solution
+- high- and low-pass audio filters
+- DMC audio channel
+- untangle CPU and APU/PPU?
 - GUI? drag and drop ROMs?
 - reset function
 - save/load/pause functionality

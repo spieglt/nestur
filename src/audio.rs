@@ -32,12 +32,7 @@ impl AudioCallback for ApuSampler {
                 }
             }
             let l = b.len();
-            // how many samples we would hope to have consumed
             let target = (SAMPLES_PER_FRAME as f32 * self.sample_ratio) as usize;
-            // if we had more data than we needed, truncate what we used and keep the rest in case
-            // the callback is called twice before the buffer is refilled,
-            // but raise the ratio so we get closer to the speed at which the APU is working.
-            // if we didn't have enough, decrease the ratio so we take more samples from the APU
             if l > target {
                 *b = b.split_off(target);
             }

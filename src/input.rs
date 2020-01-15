@@ -1,7 +1,7 @@
 use sdl2::keyboard::Scancode;
 use std::collections::HashSet;
 
-pub fn poll_buttons(strobe: &u8, event_pump: &sdl2::EventPump) -> Option<u8> { // Called when CPU writes to $4016. Stores current key-presses in button_states.
+pub fn poll_buttons(strobe: &u8, event_pump: &sdl2::EventPump) -> Option<u8> {
     if *strobe & 1 == 1 {
         let mut button_states = 0;
         let pressed_keys: HashSet<Scancode> = event_pump.keyboard_state().pressed_scancodes().collect();

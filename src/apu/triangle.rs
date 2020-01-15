@@ -4,13 +4,12 @@ const WAVEFORM: [u16; 32] = [
 ];
 
 pub struct Triangle {
-    pub enabled: bool,
     pub sample: u16,
+    pub enabled: bool,
 
     timer: u16,
     timer_period: u16,
     waveform_counter: usize,
-    
     pub length_counter: u8,
     length_counter_halt: bool, // (this bit is also the linear counter's control flag)
     
@@ -22,8 +21,8 @@ pub struct Triangle {
 impl Triangle {
     pub fn new() -> Self {
         Triangle {
-            enabled: false,
             sample: 0,
+            enabled: false,
             timer: 0,
             timer_period: 0,
             waveform_counter: 0,

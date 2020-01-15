@@ -2,6 +2,7 @@ mod noise;
 mod square;
 mod triangle;
 mod dmc;
+mod envelope;
 
 use noise::Noise;
 use square::Square;
@@ -11,8 +12,6 @@ use dmc::DMC;
 // APU clock ticks every other CPU cycle.
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
 // Length counter controls note durations.
-
-// TODO: organize APU structs
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
@@ -30,8 +29,8 @@ pub struct Apu {
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
 
+    frame_sequence: u8,
     frame_counter: u8,
-    current_frame: u8,
     interrupt_inhibit: bool,
     frame_interrupt: bool,
     cycle: usize,
@@ -43,8 +42,8 @@ impl Apu {
         let square_table = (0..31).map(|x| 95.52/((8128.0 / x as f32) + 100.0)).collect();
         let tnd_table = (0..203).map(|x| 163.67/((24329.0 / x as f32) + 100.0)).collect();
         Apu {
-            square1:    Square::new(false),
-            square2:    Square::new(true),
+            square1:    Square::new(true),
+            square2:    Square::new(false),
             triangle: Triangle::new(),
             noise:       Noise::new(),
             dmc:           DMC::new(),
@@ -52,8 +51,8 @@ impl Apu {
             square_table: square_table,
             tnd_table: tnd_table,
 
+            frame_sequence: 0,
             frame_counter: 0,
-            current_frame: 0,
             interrupt_inhibit: false,
             frame_interrupt: false,
             cycle: 0,
@@ -66,7 +65,7 @@ impl Apu {
         self.square1.clock();
         self.square2.clock();
         self.triangle.clock();
-        self.triangle.clock(); // TODO: hacky. clocking triangle twice because it runs every CPU cycle
+        self.triangle.clock(); // hacky. clocking triangle twice because it runs every CPU cycle
         self.noise.clock();
         self.dmc.clock();
 
@@ -75,7 +74,7 @@ impl Apu {
             self.clock_frame_counter();
         }
         self.cycle += 1;
-        if (self.frame_counter == 4 && self.cycle == 14915) || self.cycle == 18641 {
+        if (self.frame_sequence == 4 && self.cycle == 14915) || self.cycle == 18641 {
             self.cycle = 0;
         }
 
@@ -125,16 +124,16 @@ impl Apu {
     // - l - l    - l - - l    Length counter and sweep
     // e e e e    e e e - e    Envelope and linear counter
     fn clock_frame_counter(&mut self) {
-        if !(self.frame_counter == 5 && self.current_frame == 3) {
+        if !(self.frame_sequence == 5 && self.frame_counter == 3) {
             // step envelopes
-            self.square1.clock_envelope();
-            self.square2.clock_envelope();
+            self.square1.envelope.clock();
+            self.square2.envelope.clock();
             self.triangle.clock_linear_counter();
-            self.noise.clock_envelope();
+            self.noise.envelope.clock();
         }
-        if (self.current_frame == 1)
-            || (self.frame_counter == 4 && self.current_frame == 3)
-            || (self.frame_counter == 5 && self.current_frame == 4)
+        if (self.frame_counter == 1)
+            || (self.frame_sequence == 4 && self.frame_counter == 3)
+            || (self.frame_sequence == 5 && self.frame_counter == 4)
         {
             // step length counters and sweep units
             self.square1.clock_sweep();
@@ -144,13 +143,13 @@ impl Apu {
             self.triangle.clock_length_counter();
             self.noise.clock_length_counter();
         }
-        if self.frame_counter == 4 && self.current_frame == 3 && !self.interrupt_inhibit {
+        if self.frame_sequence == 4 && self.frame_counter == 3 && !self.interrupt_inhibit {
             self.trigger_irq = true;
         }
         // advance counter
-        self.current_frame += 1;
-        if self.current_frame == self.frame_counter {
-            self.current_frame = 0;
+        self.frame_counter += 1;
+        if self.frame_counter == self.frame_sequence {
+            self.frame_counter = 0;
         }
     }
 
@@ -234,23 +233,23 @@ impl Apu {
     // $4017
     fn write_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
-        self.frame_counter = if value & (1<<7) == 0 { 4 } else { 5 };
+        self.frame_sequence = if value & (1<<7) == 0 { 4 } else { 5 };
         // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
         if value & (1<<6) != 0 {
             self.interrupt_inhibit = false;
         }
         // If the mode flag is set, then both "quarter frame" and "half frame" signals are also generated.
-        if self.frame_counter == 5 {
+        if self.frame_sequence == 5 {
             // Clock envelopes, length counters, and sweep units
-            self.square1.clock_envelope();
+            self.square1.envelope.clock();
             self.square1.clock_sweep();
             self.square1.clock_length_counter();
-            self.square2.clock_envelope();
+            self.square2.envelope.clock();
             self.square2.clock_sweep();
             self.square2.clock_length_counter();
             self.triangle.clock_linear_counter();
             self.triangle.clock_length_counter();
-            self.noise.clock_envelope();
+            self.noise.envelope.clock();
             self.noise.clock_length_counter();
         }
     }
