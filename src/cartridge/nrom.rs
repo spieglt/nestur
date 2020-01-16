@@ -31,7 +31,7 @@ impl Mapper for Nrom {
             0xC000..=0xFFFF => {
                 self.cart.prg_rom[pl-1][addr]
             },
-            _ => panic!("bad address sent to NROM mapper: 0x{:X}", address),
+            _ => {println!("bad address read from NROM mapper: 0x{:X}", address); 0},
         }
     }
 
@@ -45,13 +45,9 @@ impl Mapper for Nrom {
                     self.cart.chr_rom[cl-1][address] = value;
                 }
             },
-            0x8000..=0xBFFF => {
-                self.cart.prg_rom[0][addr] = value;
-            },
-            0xC000..=0xFFFF => {
-                self.cart.prg_rom[pl-1][addr] = value;
-            },
-            _ => panic!("bad address sent to NROM mapper: 0x{:X}", address),
+            0x8000..=0xBFFF => self.cart.prg_rom[0][addr] = value,
+            0xC000..=0xFFFF => self.cart.prg_rom[pl-1][addr] = value,
+            _ => println!("bad address written to NROM mapper: 0x{:X}", address),
         }
     }
 

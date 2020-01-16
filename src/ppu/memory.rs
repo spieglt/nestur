@@ -55,19 +55,28 @@ impl super::Ppu {
         let base = address % 0x1000;
         let offset = base % 0x0400;
         match self.mapper.borrow_mut().get_mirroring() {
-            Mirror::LowBank => self.nametable_low_bank[offset],
-            Mirror::HighBank => self.nametable_high_bank[offset],
+            Mirror::LowBank => self.nametable_A[offset],
+            Mirror::HighBank => self.nametable_B[offset],
             Mirror::Horizontal => {
                 match base {
-                    0x0000..=0x07FF => self.nametable_low_bank[offset],
-                    0x0800..=0x0FFF => self.nametable_high_bank[offset],
+                    0x0000..=0x07FF => self.nametable_A[offset],
+                    0x0800..=0x0FFF => self.nametable_B[offset],
                     _ => panic!("panicked reading nametable base: {}", base),
                 }
             },
             Mirror::Vertical => {
                 match base {
-                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_low_bank[offset],
-                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_high_bank[offset],
+                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_A[offset],
+                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_B[offset],
+                    _ => panic!("panicked reading nametable base: {}", base),
+                }
+            },
+            Mirror::FourScreen => {
+                match base {
+                    0x0000..=0x03FF => self.nametable_A[offset],
+                    0x0400..=0x07FF => self.nametable_B[offset],
+                    0x0800..=0x0BFF => self.nametable_C[offset],
+                    0x0C00..=0x0FFF => self.nametable_D[offset],
                     _ => panic!("panicked reading nametable base: {}", base),
                 }
             },
@@ -78,23 +87,28 @@ impl super::Ppu {
         let base = address % 0x1000;
         let offset = base % 0x0400;
         match self.mapper.borrow_mut().get_mirroring() {
-            Mirror::LowBank => {
-                self.nametable_low_bank[offset] = value;
-            },
-            Mirror::HighBank => {
-                self.nametable_high_bank[offset] = value;
-            },
+            Mirror::LowBank => self.nametable_A[offset] = value,
+            Mirror::HighBank => self.nametable_B[offset] = value,
             Mirror::Horizontal => {
                 match base {
-                    0x0000..=0x07FF => self.nametable_low_bank[offset] = value,
-                    0x0800..=0x0FFF => self.nametable_high_bank[offset] = value,
+                    0x0000..=0x07FF => self.nametable_A[offset] = value,
+                    0x0800..=0x0FFF => self.nametable_B[offset] = value,
                     _ => panic!("panicked writing nametable base: {}", base),
                 }
             },
             Mirror::Vertical => {
                 match base {
-                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_low_bank[offset] = value,
-                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_high_bank[offset] = value,
+                    0x0000..=0x03FF | 0x0800..=0x0BFF => self.nametable_A[offset] = value,
+                    0x0400..=0x07FF | 0x0C00..=0x0FFF => self.nametable_B[offset] = value,
+                    _ => panic!("panicked writing nametable base: {}", base),
+                }
+            },
+            Mirror::FourScreen => {
+                match base {
+                    0x0000..=0x03FF => self.nametable_A[offset] = value,
+                    0x0400..=0x07FF => self.nametable_B[offset] = value,
+                    0x0800..=0x0BFF => self.nametable_C[offset] = value,
+                    0x0C00..=0x0FFF => self.nametable_D[offset] = value,
                     _ => panic!("panicked writing nametable base: {}", base),
                 }
             },

@@ -1,8 +1,14 @@
 mod nrom;
 mod mmc1;
+mod uxrom;
+mod cnrom;
+// mod mmc3;
 
 use nrom::Nrom;
 use mmc1::Mmc1;
+use uxrom::Uxrom;
+use cnrom::Cnrom;
+// use mmc3::Mmc3;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -22,6 +28,7 @@ pub enum Mirror {
     HighBank,
     Horizontal,
     Vertical,
+    FourScreen,
 }
 
 pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
@@ -30,6 +37,9 @@ pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
     match num {
         0 => Rc::new(RefCell::new(Nrom::new(cart))),
         1 => Rc::new(RefCell::new(Mmc1::new(cart))),
+        2 => Rc::new(RefCell::new(Uxrom::new(cart))),
+        3 => Rc::new(RefCell::new(Cnrom::new(cart))),
+        // 4 => Rc::new(RefCell::new(Mmc3::new(cart))),
         _ => panic!("unimplemented mapper: {}", num),
     }
 }
@@ -41,7 +51,7 @@ pub struct Cartridge {
     pub mirroring: Mirror, // 0 horizontal, 1 vertical
     battery_backed_ram: bool, // 1: Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory
     trainer_present: bool, // 1: 512-byte trainer at $7000-$71FF (stored before PRG data)
-    _four_screen_vram: u8, // 1: Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM
+    four_screen_vram: bool, // 1: Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM
     // TODO: other iNES header flags
 
     pub prg_rom: Vec<Vec<u8>>, // 16 KiB chunks for CPU
@@ -68,7 +78,7 @@ impl Cartridge {
             mirroring:       if data[6] & (1 << 0) == 0 {Mirror::Horizontal} else {Mirror::Vertical},
             battery_backed_ram: data[6] & (1 << 1) != 0,
             trainer_present:    data[6] & (1 << 2) != 0,
-            _four_screen_vram: (data[6] & (1 << 3) != 0) as u8,
+            four_screen_vram:   data[6] & (1 << 3) != 0,
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             all_data: data,
