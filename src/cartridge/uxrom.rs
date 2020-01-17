@@ -50,4 +50,6 @@ impl Mapper for Uxrom {
 
     fn load_battery_backed_ram(&mut self) {}
     fn save_battery_backed_ram(&self) {}
+    fn clock(&mut self) {}
+    fn check_irq(&mut self) -> bool {false}
 }

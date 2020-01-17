@@ -144,15 +144,20 @@ impl Cpu {
             return 1;
         }
 
-        // handle interrupts
+        // handle interrupts from ppu
         if self.ppu.trigger_nmi {
             self.nmi();
         }
         self.ppu.trigger_nmi = false;
+        // and apu
         if self.apu.trigger_irq && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
             self.irq();
         }
         self.apu.trigger_irq = false;
+        // and mapper MMC3
+        if self.mapper.borrow_mut().check_irq() {
+            self.irq();
+        }
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;

@@ -2,13 +2,13 @@ mod nrom;
 mod mmc1;
 mod uxrom;
 mod cnrom;
-// mod mmc3;
+mod mmc3;
 
 use nrom::Nrom;
 use mmc1::Mmc1;
 use uxrom::Uxrom;
 use cnrom::Cnrom;
-// use mmc3::Mmc3;
+use mmc3::Mmc3;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,6 +20,8 @@ pub trait Mapper {
     fn get_mirroring(&mut self) -> Mirror;
     fn load_battery_backed_ram(&mut self);
     fn save_battery_backed_ram(&self);
+    fn clock(&mut self);
+    fn check_irq(&mut self) -> bool;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -39,7 +41,7 @@ pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
         1 => Rc::new(RefCell::new(Mmc1::new(cart))),
         2 => Rc::new(RefCell::new(Uxrom::new(cart))),
         3 => Rc::new(RefCell::new(Cnrom::new(cart))),
-        // 4 => Rc::new(RefCell::new(Mmc3::new(cart))),
+        4 => Rc::new(RefCell::new(Mmc3::new(cart))),
         _ => panic!("unimplemented mapper: {}", num),
     }
 }

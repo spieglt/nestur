@@ -241,6 +241,27 @@ impl Ppu {
         } else {
             self.line_cycle += 1;
         }
+
+        // deal with mapper MMC3
+        if self.rendering() && (
+            self.line_cycle == 260
+            && self.sprite_size == 8
+            && self.background_pattern_table_base == 0x0000
+            && self.sprite_pattern_table_base == 0x1000
+        ) || (
+            self.line_cycle == 324
+            && self.sprite_size == 8
+            && self.background_pattern_table_base == 0x1000
+            && self.sprite_pattern_table_base == 0x0000
+        ) || (
+            self.line_cycle == 260
+            && self.sprite_size == 16
+            // TODO: figure out exact conditions here
+        )
+        {
+            self.mapper.borrow_mut().clock()
+        }
+
         (pixel, end_of_frame)
     }
 }

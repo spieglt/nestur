@@ -113,18 +113,22 @@ impl Mmc1 {
 impl Mapper for Mmc1 {
     fn read(&mut self, address: usize) -> u8 {
         match address {
-            0x0000..=0x0FFF => {
-                if self.cart.chr_rom_size > self.chr_low_bank {
-                    self.cart.chr_rom[self.chr_low_bank][address % 0x1000]
+            0x0000..=0x1FFF => {
+                let offset = address % 0x1000;
+                if self.chr_bank_mode {
+                    // if 4K bank mode, $0000-$0FFF will be a 4K-indexed section of some CHR-ROM chunk referred to by chr_low_bank
+                    // and $1000-$1FFF will be the one referred to by chr_high_bank
+                    let bank = match address {
+                        0x0000..=0x0FFF => self.chr_low_bank,
+                        0x1000..=0x1FFF => self.chr_high_bank,
+                        _ => panic!("bad address read from MMC1: 0x{:X}", address),
+                    };
+                    let chunk_num = bank / 2;
+                    let chunk_half = if bank % 2 == 0 {0x0} else {0x1000};
+                    self.cart.chr_rom[chunk_num][chunk_half + offset]
                 } else {
-                    self.chr_ram_bank[address]
-                }
-            },
-            0x1000..=0x1FFF => {
-                if self.cart.chr_rom_size > self.chr_high_bank {
-                    self.cart.chr_rom[self.chr_high_bank][address % 0x1000]
-                } else {
-                    self.chr_ram_bank[address]
+                    // if we're in 8K bank mode, the whole $0000-$1FFF region will be the 8K range referred to by chr_low_bank
+                    self.cart.chr_rom[self.chr_low_bank][address]
                 }
             },
             0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000],
@@ -197,4 +201,7 @@ impl Mapper for Mmc1 {
             .expect("could not create output file for battery-backed RAM");
         f.write_all(&self.prg_ram_bank).expect("could not write battery-backed RAM to file");
     }
+
+    fn clock(&mut self) {}
+    fn check_irq(&mut self) -> bool {false}
 }
