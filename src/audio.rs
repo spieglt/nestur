@@ -37,7 +37,7 @@ impl AudioCallback for ApuSampler {
                 *b = b.split_off(target);
             }
         } else {
-            println!("buffer empty!"); // happens when the callback fires twice between video frames
+            // println!("buffer empty!"); // happens when the callback fires twice between video frames
         }
     }
 }
@@ -52,7 +52,7 @@ pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
         samples: Some(SAMPLES_PER_FRAME)
     };
     audio_subsystem.open_playback(None, &desired_spec, |spec| {
-        println!("{:?}", spec);
+        // println!("{:?}", spec);
         ApuSampler{buffer, sample_ratio: APU_SAMPLE_RATE / (SDL_SAMPLE_RATE as f32)}
     })
 }

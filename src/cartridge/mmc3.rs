@@ -18,13 +18,14 @@ pub struct Mmc3 {
     prg_rom_bank_mode: bool,
     // 0: two 2 KB banks at $0000-$0FFF, four 1 KB banks at $1000-$1FFF
     // 1: two 2 KB banks at $1000-$1FFF, four 1 KB banks at $0000-$0FFF
+
     chr_rom_bank_mode: bool,
+    chr_ram_bank: Vec<u8>, // used if cartridge doesn't have any CHR-ROM, 8KB, $0000-$1FFF
 }
 
 impl Mmc3 {
     pub fn new(cart: Cartridge) -> Self {
         let m = cart.mirroring;
-        // let num_banks = cart.prg_rom_size
         Mmc3{
             cart: cart,
             mirroring: m,
@@ -37,6 +38,7 @@ impl Mmc3 {
             prg_ram_bank: vec![0; 0x2000],
             prg_rom_bank_mode: false,
             chr_rom_bank_mode: false,
+            chr_ram_bank: vec![0; 0x2000],
         }
     }
 
@@ -51,8 +53,8 @@ impl Mmc3 {
         // R6 and R7 will ignore the top two bits, as the MMC3 has only 6 PRG ROM address lines.
         // R0 and R1 ignore the bottom bit, as the value written still counts banks in 1KB units but odd numbered banks can't be selected.
         self.bank_registers[self.next_bank as usize] = match self.next_bank {
-            0 | 1 => value & 0b0011_1111,
-            6 | 7 => value & 0b1111_1110,
+            0 | 1 => value & 0b1111_1110,
+            6 | 7 => value & 0b0011_1111,
             _ => value,
         } as usize;
     }
@@ -67,7 +69,6 @@ impl Mapper for Mmc3 {
                 let offset_1k = address % 0x400;
                 let offset_2k = address % 0x800;
                 let bank_reg_num = match self.chr_rom_bank_mode {
-                    // look at the value in the bank reg, then depending whether that's a 
                     true => {
                         match address {
                             0x0000..=0x03FF => 2,
@@ -92,13 +93,11 @@ impl Mapper for Mmc3 {
                     },
                 };
                 let bank_num = self.bank_registers[bank_reg_num];
+                let chunk_num = bank_num / 8;
+                let chunk_eighth = (bank_num % 8) * 0x400;
                 if bank_reg_num == 0 || bank_reg_num == 1 { // dealing with 2K banks of 8K chunks
-                    let chunk_num = bank_num / 4;
-                    let chunk_quarter = (bank_num % 4) * 0x800;
-                    self.cart.chr_rom[chunk_num][chunk_quarter + offset_2k]
+                    self.cart.chr_rom[chunk_num][chunk_eighth + offset_2k]
                 } else { // dealing with 1K banks of 8K chunks
-                    let chunk_num = bank_num / 8;
-                    let chunk_eighth = (bank_num % 8) * 0x400;
                     self.cart.chr_rom[chunk_num][chunk_eighth + offset_1k]
                 }
             },
@@ -108,7 +107,7 @@ impl Mapper for Mmc3 {
             0x8000..=0xFFFF => { // reading from PRG ROM, dealing with 8K banks of 16K chunks
                 let offset_8k = address % 0x2000;
                 let num_banks = self.cart.prg_rom_size * 2;
-                let bank_num = match self.chr_rom_bank_mode {
+                let bank_num = match self.prg_rom_bank_mode {
                     true => {
                         match address {
                             0x8000..=0x9FFF => num_banks - 2,
@@ -129,7 +128,7 @@ impl Mapper for Mmc3 {
                     },
                 };
                 let chunk_num = bank_num / 2;
-                let chunk_half = (bank_num % 2) * 0x1000;
+                let chunk_half = (bank_num % 2) * 0x2000;
                 self.cart.prg_rom[chunk_num][chunk_half + offset_8k]
                 
             },
@@ -138,11 +137,16 @@ impl Mapper for Mmc3 {
                 0
             },
         };
-        println!("reading 0x{:X} from 0x{:X}", val, address);
         val
     }
 
     fn write(&mut self, address: usize, value: u8) {
+        if (0..=0x1FFF).contains(&address) {
+            if self.cart.chr_rom_size == 0 {
+                self.chr_ram_bank[address] = value;
+            }
+            return
+        }
         match address % 2 == 0 {
             true => { // even
                 match address {
@@ -151,7 +155,7 @@ impl Mapper for Mmc3 {
                     0xA000..=0xBFFF => self.mirroring = if value & 1 == 0 {Mirror::Vertical} else {Mirror::Horizontal},
                     0xC000..=0xDFFF => self.irq_latch = value,
                     0xE000..=0xFFFF => self.irq_enable = false,
-                    _ => panic!("oh no"),
+                    _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
             },
             false => { // odd
@@ -161,7 +165,7 @@ impl Mapper for Mmc3 {
                     0xA000..=0xBFFF => self.prg_ram_protect(),
                     0xC000..=0xDFFF => self.irq_counter = 0, // Writing any value to this register reloads the MMC3 IRQ counter at the NEXT rising edge of the PPU address, presumably at PPU cycle 260 of the current scanline.
                     0xE000..=0xFFFF => self.irq_enable = true,
-                    _ => panic!("oh no"),
+                    _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
             },
         }

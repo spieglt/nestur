@@ -84,7 +84,7 @@ impl Cpu {
             A: 0, X: 0, Y: 0,
             PC: 0,
             S: 0xFD,
-            P: 0x34,
+            P: 0x24,
             clock: 0,
             delay: 0,
             mapper: mapper,
@@ -155,7 +155,8 @@ impl Cpu {
         }
         self.apu.trigger_irq = false;
         // and mapper MMC3
-        if self.mapper.borrow_mut().check_irq() {
+        if self.mapper.borrow_mut().check_irq() && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
+            // println!("firing IRQ from mapper");
             self.irq();
         }
 
