@@ -156,7 +156,6 @@ impl Cpu {
         self.apu.trigger_irq = false;
         // and mapper MMC3
         if self.mapper.borrow_mut().check_irq() && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
-            // println!("firing IRQ from mapper");
             self.irq();
         }
 
