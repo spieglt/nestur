@@ -1,6 +1,10 @@
 # nestur
 
-Nestur is an NES emulator and a work in progress. There are still some minor bugs and the audio is kind of scratchy. I've mostly tested on Donkey Kong, Super Mario Bros., and Zelda so far. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well. SDL2 is the only dependency, it's NTSC timing, and contains no `unsafe` code.
+Nestur is an NES emulator and a work in progress. There are likely still several bugs, and MMC3 support is not great. There are plenty of full-featured emulators out there; this is primarily an educational project but I do want it to run well.
+- SDL2 is the only dependency
+- no use of `unsafe`
+- NTSC timing
+- may only implement mappers 0-4 as these cover ~85% of games according to http://tuxnes.sourceforge.net/nesmapper.txt
 
 <img src="pics/smb.png" width=350>  <img src="pics/zelda_dungeon.png" width=350>
 
@@ -34,7 +38,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 ## To do:
 
-- More mappers (only mappers 0 (NROM) and 1 (MMC1) implemented so far)
+- Find any bugs with mappers 0-4 and improve mapper 5 (MMC3)
 
 - DMC audio channel, high- and low-pass filters
 

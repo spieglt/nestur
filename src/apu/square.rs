@@ -113,7 +113,7 @@ impl Square {
             // which produces different results when each channel's change amount is made negative:
             // Pulse 1 adds the ones' complement (-c - 1). Making 20 negative produces a change amount of -21.
             // Pulse 2 adds the two's complement (-c). Making 20 negative produces a change amount of -20.
-            if self.first_channel {
+            if self.first_channel && self.target_period >= 1 {
                 self.target_period -= 1;
             }
         } else {

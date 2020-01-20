@@ -147,7 +147,7 @@ impl Apu {
             self.trigger_irq = true;
         }
         // advance counter
-        self.frame_counter += 1;
+        self.frame_counter = self.frame_counter.wrapping_add(1);
         if self.frame_counter == self.frame_sequence {
             self.frame_counter = 0;
         }
