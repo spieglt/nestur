@@ -118,7 +118,7 @@ fn main() -> Result<(), String> {
 /*
 
 TODO:
-- common mappers (0 through 4 = ~1,360 games out of ~1,592, 85%)
+- fix MMC3
 - high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
