@@ -38,11 +38,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 ## To do:
 
-<<<<<<< HEAD
 - Fix any bugs with mappers 0-4 and improve mapper 5 (MMC3)
-=======
-- Find any bugs with mappers 0-3 and improve mapper 4 (MMC3)
->>>>>>> c2e7b00ab09feb4a49a7baebad58fcf243f5f450
 
 - DMC audio channel, high- and low-pass filters
 
