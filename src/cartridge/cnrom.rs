@@ -16,14 +16,13 @@ impl Cnrom {
 
 impl Mapper for Cnrom {
     fn read(&mut self, address: usize) -> u8 {
-        let cl = self.cart.chr_rom.len();
         let pl = self.cart.prg_rom.len();
         let addr = address % 0x4000;
         match address {
             0x0000..=0x1FFF => self.cart.chr_rom[self.chr_bank_select][address],
             0x8000..=0xBFFF => self.cart.prg_rom[0][addr],
             0xC000..=0xFFFF => self.cart.prg_rom[pl-1][addr],
-            _ => panic!("bad address read from CNROM mapper: 0x{:X}", address),
+            _ => {println!("bad address read from CNROM mapper: 0x{:X}", address); 0},
         }
     }
 

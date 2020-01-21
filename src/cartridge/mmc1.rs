@@ -180,30 +180,32 @@ impl Mapper for Mmc1 {
     }
 
     fn load_battery_backed_ram(&mut self) {
-        // check for filename, if not there make it
-        // println!("{}", self.cart.filename);
-        let p = Path::new(&self.cart.filename).parent().unwrap();
-        let stem = Path::new(&self.cart.filename).file_stem().unwrap();
-        let mut save_file = p.join(stem);
-        save_file.set_extension("sav");
-        if Path::new(&save_file).exists() {
-            let mut f = File::open(save_file.clone()).expect("save file exists but could not open it");
-            let mut battery_backed_ram_data = vec![];
-            f.read_to_end(&mut battery_backed_ram_data).expect("error reading save file");
-            println!("loading battery-backed RAM from file: {:?}", save_file);
-            self.prg_ram_bank = battery_backed_ram_data;
+        if self.cart.battery_backed_ram {
+            let p = Path::new(&self.cart.filename).parent().unwrap();
+            let stem = Path::new(&self.cart.filename).file_stem().unwrap();
+            let mut save_file = p.join(stem);
+            save_file.set_extension("sav");
+            if Path::new(&save_file).exists() {
+                let mut f = File::open(save_file.clone()).expect("save file exists but could not open it");
+                let mut battery_backed_ram_data = vec![];
+                f.read_to_end(&mut battery_backed_ram_data).expect("error reading save file");
+                println!("loading battery-backed RAM from file: {:?}", save_file);
+                self.prg_ram_bank = battery_backed_ram_data;
+            }
         }
     }
 
     fn save_battery_backed_ram(&self) {
-        let p = Path::new(&self.cart.filename).parent().unwrap();
-        let stem = Path::new(&self.cart.filename).file_stem().unwrap();
-        let mut save_file = p.join(stem);
-        save_file.set_extension("sav");
-        println!("saving battery-backed RAM to file: {:?}", save_file);
-        let mut f = File::create(&save_file)
-            .expect("could not create output file for battery-backed RAM");
-        f.write_all(&self.prg_ram_bank).expect("could not write battery-backed RAM to file");
+        if self.cart.battery_backed_ram {
+            let p = Path::new(&self.cart.filename).parent().unwrap();
+            let stem = Path::new(&self.cart.filename).file_stem().unwrap();
+            let mut save_file = p.join(stem);
+            save_file.set_extension("sav");
+            println!("saving battery-backed RAM to file: {:?}", save_file);
+            let mut f = File::create(&save_file)
+                .expect("could not create output file for battery-backed RAM");
+            f.write_all(&self.prg_ram_bank).expect("could not write battery-backed RAM to file");
+        }
     }
 
     fn clock(&mut self) {}
