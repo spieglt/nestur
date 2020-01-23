@@ -34,7 +34,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 ## To do:
 
-- More mappers (only mappers 0 (NROM) and 1 (MMC1) implemented so far)
+- Fix any bugs with mappers 0-3 and improve mapper 4 (MMC3)
 
 - DMC audio channel, high- and low-pass filters
 

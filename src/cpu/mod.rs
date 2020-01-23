@@ -150,13 +150,14 @@ impl Cpu {
         }
         self.ppu.trigger_nmi = false;
         // and apu
-        if self.apu.trigger_irq && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
-            self.irq();
+        if self.apu.trigger_irq {
+            if self.P & INTERRUPT_DISABLE_FLAG == 0 {
+                self.irq();
+            }
+            self.apu.trigger_irq = false;
         }
-        self.apu.trigger_irq = false;
         // and mapper MMC3
-        if self.mapper.borrow_mut().check_irq() && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
-            // println!("firing IRQ from mapper");
+        if self.mapper.borrow_mut().check_irq() && self.P & INTERRUPT_DISABLE_FLAG == 0 {
             self.irq();
         }
 

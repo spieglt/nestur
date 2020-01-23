@@ -11,6 +11,7 @@ pub struct Mmc3 {
     irq_counter: u8,
     irq_enable: bool,
     trigger_irq: bool, // signal to send to CPU
+    reset_counter: bool,
 
     prg_ram_bank: Vec<u8>, // CPU $6000-$7FFF
     // 0: $8000-$9FFF swappable, $C000-$DFFF fixed to second-last bank
@@ -35,6 +36,7 @@ impl Mmc3 {
             irq_counter: 0,
             irq_enable: false,
             trigger_irq: false,
+            reset_counter: false,
             prg_ram_bank: vec![0; 0x2000],
             prg_rom_bank_mode: false,
             chr_rom_bank_mode: false,
@@ -154,7 +156,7 @@ impl Mapper for Mmc3 {
                     0x8000..=0x9FFF => self.bank_select(value),
                     0xA000..=0xBFFF => self.mirroring = if value & 1 == 0 {Mirror::Vertical} else {Mirror::Horizontal},
                     0xC000..=0xDFFF => self.irq_latch = value,
-                    0xE000..=0xFFFF => self.irq_enable = false,
+                    0xE000..=0xFFFF => {self.irq_enable = false; self.trigger_irq = false;},
                     _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
             },
@@ -163,7 +165,7 @@ impl Mapper for Mmc3 {
                     0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000] = value, // PRG-RAM
                     0x8000..=0x9FFF => self.bank_data(value),
                     0xA000..=0xBFFF => self.prg_ram_protect(),
-                    0xC000..=0xDFFF => self.irq_counter = 0, // Writing any value to this register reloads the MMC3 IRQ counter at the NEXT rising edge of the PPU address, presumably at PPU cycle 260 of the current scanline.
+                    0xC000..=0xDFFF => self.reset_counter = true, // self.irq_counter = 0, // Writing any value to this register reloads the MMC3 IRQ counter at the NEXT rising edge of the PPU address, presumably at PPU cycle 260 of the current scanline.
                     0xE000..=0xFFFF => self.irq_enable = true,
                     _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
@@ -182,20 +184,36 @@ impl Mapper for Mmc3 {
     fn load_battery_backed_ram(&mut self) {}
     fn save_battery_backed_ram(&self) {}
 
+    // from blargg's mmc3 tests:
+    // 1: should decrement when A12 is toggled via PPUADDR (doing this already)
+    // 2: counter isn't working when reloaded with 255
+    // 3: should be clocked when A12 changes to 1 via PPUADDR write (again, doing this)
+    // 4: black screen, silent
+    // 5: should reload and set IRQ every clock when reload is 0
+    // 6: IRQ shouldn't be set when reloading to 0 due to counter naturally reaching 0 previously
     fn clock(&mut self) {
+        if self.irq_latch == 0 && self.irq_enable { // fixes test 5
+            self.trigger_irq = true;
+        }
         if self.irq_counter == 0 {
             self.irq_counter = self.irq_latch;
         } else {
             self.irq_counter -= 1;
+            return;
         }
         if self.irq_counter == 0 && self.irq_enable {
             self.trigger_irq = true;
+        }
+        if self.reset_counter == true {
+            self.irq_counter = 0;
+            self.reset_counter = false;
+            return;
         }
     }
 
     fn check_irq(&mut self) -> bool {
         if self.trigger_irq {
-            self.trigger_irq = false;
+            // self.trigger_irq = false;
             true
         } else {
             false

@@ -219,6 +219,28 @@ impl Ppu {
             self.sprite_overflow = false;
         }
 
+        // deal with mapper MMC3
+        // if self.scanline < 240 && self.rendering() && ((
+        //     self.line_cycle == 260
+        //     && self.sprite_size == 8
+        //     && self.background_pattern_table_base == 0x0000
+        //     && self.sprite_pattern_table_base == 0x1000
+        // ) || (
+        //     self.line_cycle == 324
+        //     && self.sprite_size == 8
+        //     && self.background_pattern_table_base == 0x1000
+        //     && self.sprite_pattern_table_base == 0x0000
+        // ) || (
+        //     self.line_cycle == 260
+        //     && self.sprite_size == 16
+        //     // TODO: figure out exact conditions here
+        // ))
+        if self.line_cycle == 280 && self.rendering()
+            && self.sprite_pattern_table_base != self.background_pattern_table_base
+        {
+            self.mapper.borrow_mut().clock();
+        }
+
         // signal time to draw frame
         let end_of_frame = self.line_cycle == 256 && self.scanline == 240;
 
@@ -240,26 +262,6 @@ impl Ppu {
         // If none of the above, just go to next cycle in the row
         } else {
             self.line_cycle += 1;
-        }
-
-        // deal with mapper MMC3
-        if self.rendering() && (
-            self.line_cycle == 260
-            && self.sprite_size == 8
-            && self.background_pattern_table_base == 0x0000
-            && self.sprite_pattern_table_base == 0x1000
-        ) || (
-            self.line_cycle == 324
-            && self.sprite_size == 8
-            && self.background_pattern_table_base == 0x1000
-            && self.sprite_pattern_table_base == 0x0000
-        ) || (
-            self.line_cycle == 260
-            && self.sprite_size == 16
-            // TODO: figure out exact conditions here
-        )
-        {
-            self.mapper.borrow_mut().clock()
         }
 
         (pixel, end_of_frame)
