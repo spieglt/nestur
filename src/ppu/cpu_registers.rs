@@ -99,6 +99,7 @@ impl super::Ppu {
 
     // cpu writes to 0x2006, PPUADDR
     pub fn write_address(&mut self, val: u8) {
+        self.mapper.borrow_mut().clock();
         let d = val as u16;
         match self.w { // first write
             0 => {
