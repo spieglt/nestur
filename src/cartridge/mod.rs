@@ -1,18 +1,18 @@
-mod nrom;
-mod mmc1;
-mod uxrom;
 mod cnrom;
+mod mmc1;
 mod mmc3;
+mod nrom;
+mod uxrom;
 
-use nrom::Nrom;
-use mmc1::Mmc1;
-use uxrom::Uxrom;
 use cnrom::Cnrom;
+use mmc1::Mmc1;
 use mmc3::Mmc3;
+use nrom::Nrom;
+use uxrom::Uxrom;
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::io::Read;
+use std::rc::Rc;
 
 pub trait Mapper {
     fn read(&mut self, address: usize) -> u8;
@@ -50,12 +50,11 @@ pub struct Cartridge {
     filename: String,
     prg_rom_size: usize,
     chr_rom_size: usize,
-    pub mirroring: Mirror, // 0 horizontal, 1 vertical
+    pub mirroring: Mirror,    // 0 horizontal, 1 vertical
     battery_backed_ram: bool, // 1: Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory
-    trainer_present: bool, // 1: 512-byte trainer at $7000-$71FF (stored before PRG data)
+    trainer_present: bool,    // 1: 512-byte trainer at $7000-$71FF (stored before PRG data)
     four_screen_vram: bool, // 1: Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM
     // TODO: other iNES header flags
-
     pub prg_rom: Vec<Vec<u8>>, // 16 KiB chunks for CPU
     pub chr_rom: Vec<Vec<u8>>, // 8 KiB chunks for PPU
 
@@ -71,16 +70,23 @@ impl Cartridge {
         let mut f = std::fs::File::open(filename).expect("could not open {}");
         let mut data = vec![];
         f.read_to_end(&mut data).unwrap();
-        assert!(data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "signature mismatch, not an iNES file");
+        assert!(
+            data[0..4] == [0x4E, 0x45, 0x53, 0x1A],
+            "signature mismatch, not an iNES file"
+        );
         let mapper_num = ((data[7] >> 4) << 4) + (data[6] >> 4);
         let mut cart = Cartridge {
             filename: filename.to_string(),
             prg_rom_size: data[4] as usize,
             chr_rom_size: data[5] as usize,
-            mirroring:       if data[6] & (1 << 0) == 0 {Mirror::Horizontal} else {Mirror::Vertical},
+            mirroring: if data[6] & (1 << 0) == 0 {
+                Mirror::Horizontal
+            } else {
+                Mirror::Vertical
+            },
             battery_backed_ram: data[6] & (1 << 1) != 0,
-            trainer_present:    data[6] & (1 << 2) != 0,
-            four_screen_vram:   data[6] & (1 << 3) != 0,
+            trainer_present: data[6] & (1 << 2) != 0,
+            four_screen_vram: data[6] & (1 << 3) != 0,
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             all_data: data,
@@ -91,24 +97,23 @@ impl Cartridge {
     }
 
     fn fill(&mut self) {
-        let prg_chunk_size: usize = 1<<14;
-        let chr_chunk_size: usize = 1<<13;
+        let prg_chunk_size: usize = 1 << 14;
+        let chr_chunk_size: usize = 1 << 13;
         let prg_offset: usize = 0x10 + if self.trainer_present { 0x200 } else { 0 }; // header plus trainer if present
         let chr_offset: usize = prg_offset + (self.prg_rom_size * prg_chunk_size); // chr comes after prg
-        // fill vecs with chunks
+                                                                                   // fill vecs with chunks
         for i in 0..self.prg_rom_size {
             let offset = prg_offset + (i * prg_chunk_size);
             let chunk = self.all_data[offset..(offset + prg_chunk_size)].to_vec();
             self.prg_rom.push(chunk.clone());
-        };
+        }
         for i in 0..self.chr_rom_size {
             let offset = chr_offset + (i * chr_chunk_size);
             let chunk = self.all_data[offset..offset + chr_chunk_size].to_vec();
             self.chr_rom.push(chunk);
-        };
+        }
         self.all_data.clear();
     }
-
 }
 
 /*

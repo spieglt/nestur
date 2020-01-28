@@ -19,7 +19,6 @@ pub struct Mmc3 {
     prg_rom_bank_mode: bool,
     // 0: two 2 KB banks at $0000-$0FFF, four 1 KB banks at $1000-$1FFF
     // 1: two 2 KB banks at $1000-$1FFF, four 1 KB banks at $0000-$0FFF
-
     chr_rom_bank_mode: bool,
     chr_ram_bank: Vec<u8>, // used if cartridge doesn't have any CHR-ROM, 8KB, $0000-$1FFF
 }
@@ -27,7 +26,7 @@ pub struct Mmc3 {
 impl Mmc3 {
     pub fn new(cart: Cartridge) -> Self {
         let m = cart.mirroring;
-        Mmc3{
+        Mmc3 {
             cart: cart,
             mirroring: m,
             bank_registers: vec![0, 0, 0, 0, 0, 0, 0, 0],
@@ -47,8 +46,8 @@ impl Mmc3 {
     fn bank_select(&mut self, value: u8) {
         self.next_bank = value & 0b111;
         // ?? = value & (1<<5); // Nothing on the MMC3, see MMC6
-        self.prg_rom_bank_mode = value & (1<<6) != 0;
-        self.chr_rom_bank_mode = value & (1<<7) != 0;
+        self.prg_rom_bank_mode = value & (1 << 6) != 0;
+        self.chr_rom_bank_mode = value & (1 << 7) != 0;
     }
 
     fn bank_data(&mut self, value: u8) {
@@ -67,77 +66,72 @@ impl Mmc3 {
 impl Mapper for Mmc3 {
     fn read(&mut self, address: usize) -> u8 {
         let val = match address {
-            0x0000..=0x1FFF => { // reading from CHR-ROM
+            0x0000..=0x1FFF => {
+                // reading from CHR-ROM
                 let offset_1k = address % 0x400;
                 let offset_2k = address % 0x800;
                 let bank_reg_num = match self.chr_rom_bank_mode {
-                    true => {
-                        match address {
-                            0x0000..=0x03FF => 2,
-                            0x0400..=0x07FF => 3,
-                            0x0800..=0x0BFF => 4,
-                            0x0C00..=0x0FFF => 5,
-                            0x1000..=0x17FF => 0,
-                            0x1800..=0x1FFF => 1,
-                            _ => panic!("oh no"),
-                        }
+                    true => match address {
+                        0x0000..=0x03FF => 2,
+                        0x0400..=0x07FF => 3,
+                        0x0800..=0x0BFF => 4,
+                        0x0C00..=0x0FFF => 5,
+                        0x1000..=0x17FF => 0,
+                        0x1800..=0x1FFF => 1,
+                        _ => panic!("oh no"),
                     },
-                    false => {
-                        match address {
-                            0x0000..=0x07FF => 0,
-                            0x0800..=0x0FFF => 1,
-                            0x1000..=0x13FF => 2,
-                            0x1400..=0x17FF => 3,
-                            0x1800..=0x1BFF => 4,
-                            0x1C00..=0x1FFF => 5,
-                            _ => panic!("oh no"),
-                        }
+                    false => match address {
+                        0x0000..=0x07FF => 0,
+                        0x0800..=0x0FFF => 1,
+                        0x1000..=0x13FF => 2,
+                        0x1400..=0x17FF => 3,
+                        0x1800..=0x1BFF => 4,
+                        0x1C00..=0x1FFF => 5,
+                        _ => panic!("oh no"),
                     },
                 };
                 let bank_num = self.bank_registers[bank_reg_num];
                 let chunk_num = bank_num / 8;
                 let chunk_eighth = (bank_num % 8) * 0x400;
-                if bank_reg_num == 0 || bank_reg_num == 1 { // dealing with 2K banks of 8K chunks
+                if bank_reg_num == 0 || bank_reg_num == 1 {
+                    // dealing with 2K banks of 8K chunks
                     self.cart.chr_rom[chunk_num][chunk_eighth + offset_2k]
-                } else { // dealing with 1K banks of 8K chunks
+                } else {
+                    // dealing with 1K banks of 8K chunks
                     self.cart.chr_rom[chunk_num][chunk_eighth + offset_1k]
                 }
-            },
+            }
 
             0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000], // PRG-RAM
-            
-            0x8000..=0xFFFF => { // reading from PRG ROM, dealing with 8K banks of 16K chunks
+
+            0x8000..=0xFFFF => {
+                // reading from PRG ROM, dealing with 8K banks of 16K chunks
                 let offset_8k = address % 0x2000;
                 let num_banks = self.cart.prg_rom_size * 2;
                 let bank_num = match self.prg_rom_bank_mode {
-                    true => {
-                        match address {
-                            0x8000..=0x9FFF => num_banks - 2,
-                            0xA000..=0xBFFF => self.bank_registers[7],
-                            0xC000..=0xDFFF => self.bank_registers[6],
-                            0xE000..=0xFFFF => num_banks - 1,
-                            _ => panic!("oh no"),                            
-                        }
+                    true => match address {
+                        0x8000..=0x9FFF => num_banks - 2,
+                        0xA000..=0xBFFF => self.bank_registers[7],
+                        0xC000..=0xDFFF => self.bank_registers[6],
+                        0xE000..=0xFFFF => num_banks - 1,
+                        _ => panic!("oh no"),
                     },
-                    false => {
-                        match address {
-                            0x8000..=0x9FFF => self.bank_registers[6],
-                            0xA000..=0xBFFF => self.bank_registers[7],
-                            0xC000..=0xDFFF => num_banks - 2,
-                            0xE000..=0xFFFF => num_banks - 1,
-                            _ => panic!("oh no"),
-                        }
+                    false => match address {
+                        0x8000..=0x9FFF => self.bank_registers[6],
+                        0xA000..=0xBFFF => self.bank_registers[7],
+                        0xC000..=0xDFFF => num_banks - 2,
+                        0xE000..=0xFFFF => num_banks - 1,
+                        _ => panic!("oh no"),
                     },
                 };
                 let chunk_num = bank_num / 2;
                 let chunk_half = (bank_num % 2) * 0x2000;
                 self.cart.prg_rom[chunk_num][chunk_half + offset_8k]
-                
-            },
+            }
             _ => {
                 println!("bad address read from MMC3: 0x{:X}", address);
                 0
-            },
+            }
         };
         val
     }
@@ -147,20 +141,28 @@ impl Mapper for Mmc3 {
             if self.cart.chr_rom_size == 0 {
                 self.chr_ram_bank[address] = value;
             }
-            return
+            return;
         }
         match address % 2 == 0 {
-            true => { // even
+            true => {
+                // even
                 match address {
                     0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000] = value, // PRG-RAM
                     0x8000..=0x9FFF => self.bank_select(value),
-                    0xA000..=0xBFFF => self.mirroring = if value & 1 == 0 {Mirror::Vertical} else {Mirror::Horizontal},
+                    0xA000..=0xBFFF => {
+                        self.mirroring = if value & 1 == 0 {
+                            Mirror::Vertical
+                        } else {
+                            Mirror::Horizontal
+                        }
+                    }
                     0xC000..=0xDFFF => self.irq_latch = value,
                     0xE000..=0xFFFF => self.irq_enable = false,
                     _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
-            },
-            false => { // odd
+            }
+            false => {
+                // odd
                 match address {
                     0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000] = value, // PRG-RAM
                     0x8000..=0x9FFF => self.bank_data(value),
@@ -169,7 +171,7 @@ impl Mapper for Mmc3 {
                     0xE000..=0xFFFF => self.irq_enable = true,
                     _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
-            },
+            }
         }
     }
 

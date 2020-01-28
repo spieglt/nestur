@@ -7,7 +7,7 @@ pub struct Cnrom {
 
 impl Cnrom {
     pub fn new(cart: Cartridge) -> Self {
-        Cnrom{
+        Cnrom {
             cart: cart,
             chr_bank_select: 0,
         }
@@ -21,8 +21,11 @@ impl Mapper for Cnrom {
         match address {
             0x0000..=0x1FFF => self.cart.chr_rom[self.chr_bank_select][address],
             0x8000..=0xBFFF => self.cart.prg_rom[0][addr],
-            0xC000..=0xFFFF => self.cart.prg_rom[pl-1][addr],
-            _ => {println!("bad address read from CNROM mapper: 0x{:X}", address); 0},
+            0xC000..=0xFFFF => self.cart.prg_rom[pl - 1][addr],
+            _ => {
+                println!("bad address read from CNROM mapper: 0x{:X}", address);
+                0
+            }
         }
     }
 
@@ -40,5 +43,7 @@ impl Mapper for Cnrom {
     fn load_battery_backed_ram(&mut self) {}
     fn save_battery_backed_ram(&self) {}
     fn clock(&mut self) {}
-    fn check_irq(&mut self) -> bool {false}
+    fn check_irq(&mut self) -> bool {
+        false
+    }
 }

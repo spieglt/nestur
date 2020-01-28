@@ -1,13 +1,13 @@
+mod dmc;
+mod envelope;
 mod noise;
 mod square;
 mod triangle;
-mod dmc;
-mod envelope;
 
+use dmc::DMC;
 use noise::Noise;
 use square::Square;
 use triangle::Triangle;
-use dmc::DMC;
 
 // APU clock ticks every other CPU cycle.
 // Frame counter only ticks every 3728.5 APU ticks, and in audio frames of 4 or 5.
@@ -15,17 +15,17 @@ use dmc::DMC;
 
 const FRAME_COUNTER_STEPS: [usize; 5] = [3728, 7456, 11185, 14914, 18640];
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
-    10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
-    12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
+    10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
+    192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
 pub struct Apu {
-    square1:  Square,
-    square2:  Square,
+    square1: Square,
+    square2: Square,
     triangle: Triangle,
-    noise:    Noise,
-    dmc:      DMC,
-    
+    noise: Noise,
+    dmc: DMC,
+
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
 
@@ -39,14 +39,18 @@ pub struct Apu {
 
 impl Apu {
     pub fn new() -> Self {
-        let square_table = (0..31).map(|x| 95.52/((8128.0 / x as f32) + 100.0)).collect();
-        let tnd_table = (0..203).map(|x| 163.67/((24329.0 / x as f32) + 100.0)).collect();
+        let square_table = (0..31)
+            .map(|x| 95.52 / ((8128.0 / x as f32) + 100.0))
+            .collect();
+        let tnd_table = (0..203)
+            .map(|x| 163.67 / ((24329.0 / x as f32) + 100.0))
+            .collect();
         Apu {
-            square1:    Square::new(true),
-            square2:    Square::new(false),
+            square1: Square::new(true),
+            square2: Square::new(false),
             triangle: Triangle::new(),
-            noise:       Noise::new(),
-            dmc:           DMC::new(),
+            noise: Noise::new(),
+            dmc: DMC::new(),
 
             square_table: square_table,
             tnd_table: tnd_table,
@@ -84,7 +88,8 @@ impl Apu {
 
     fn mix(&self) -> f32 {
         let square_out = self.square_table[(self.square1.sample + self.square2.sample) as usize];
-        let tnd_out = self.tnd_table[((3*self.triangle.sample)+(2*self.noise.sample) + self.dmc.sample) as usize];
+        let tnd_out = self.tnd_table
+            [((3 * self.triangle.sample) + (2 * self.noise.sample) + self.dmc.sample) as usize];
         square_out + tnd_out
     }
 
@@ -158,31 +163,31 @@ impl Apu {
         // Writing to this register clears the DMC interrupt flag.
         self.dmc.interrupt = false;
         // Writing a zero to any of the channel enable bits will silence that channel and immediately set its length counter to 0.
-        if value & (1<<0) != 0 {
+        if value & (1 << 0) != 0 {
             self.square1.enabled = true;
         } else {
             self.square1.enabled = false;
             self.square1.length_counter = 0;
         }
-        if value & (1<<1) != 0 {
+        if value & (1 << 1) != 0 {
             self.square2.enabled = true;
         } else {
             self.square2.enabled = false;
             self.square2.length_counter = 0;
         }
-        if value & (1<<2) != 0 {
+        if value & (1 << 2) != 0 {
             self.triangle.enabled = true;
         } else {
             self.triangle.enabled = false;
             self.triangle.length_counter = 0;
         }
-        if value & (1<<3) != 0 {
+        if value & (1 << 3) != 0 {
             self.noise.enabled = true;
         } else {
             self.noise.enabled = false;
             self.noise.length_counter = 0;
         }
-        if value & (1<<4) != 0 {
+        if value & (1 << 4) != 0 {
             self.dmc.enabled = true;
             // If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
             // If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
@@ -203,26 +208,26 @@ impl Apu {
         let mut val = 0;
         // N/T/2/1 will read as 1 if the corresponding length counter is greater than 0. For the triangle channel, the status of the linear counter is irrelevant.
         if self.square1.length_counter != 0 {
-            val |= 1<<0;
+            val |= 1 << 0;
         }
         if self.square2.length_counter != 0 {
-            val |= 1<<1;
+            val |= 1 << 1;
         }
         if self.triangle.length_counter != 0 {
-            val |= 1<<2;
+            val |= 1 << 2;
         }
         if self.noise.length_counter != 0 {
-            val |= 1<<3;
+            val |= 1 << 3;
         }
         // D will read as 1 if the DMC bytes remaining is more than 0.
         if self.dmc.bytes_remaining != 0 {
-            val |= 1<<4;
+            val |= 1 << 4;
         }
         if self.frame_interrupt {
-            val |= 1<<6;
+            val |= 1 << 6;
         }
         if self.dmc.interrupt {
-            val |= 1<<7;
+            val |= 1 << 7;
         }
         // Reading this register clears the frame interrupt flag (but not the DMC interrupt flag).
         self.frame_interrupt = false;
@@ -233,9 +238,9 @@ impl Apu {
     // $4017
     fn write_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
-        self.frame_sequence = if value & (1<<7) == 0 { 4 } else { 5 };
-        // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
-        if value & (1<<6) != 0 {
+        self.frame_sequence = if value & (1 << 7) == 0 { 4 } else { 5 };
+        // If set, the frame interrupt flag is cleared, otherwise it is unaffected.
+        if value & (1 << 6) != 0 {
             self.interrupt_inhibit = false;
         }
         // If the mode flag is set, then both "quarter frame" and "half frame" signals are also generated.

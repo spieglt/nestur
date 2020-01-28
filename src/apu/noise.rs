@@ -1,9 +1,11 @@
 use super::envelope::Envelope;
 
-const NOISE_TABLE: [u16; 16] = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
+const NOISE_TABLE: [u16; 16] = [
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+];
 
 // $400E 	M---.PPPP 	Mode and period (write)
-// bit 7 	M--- ---- 	Mode flag 
+// bit 7 	M--- ---- 	Mode flag
 pub struct Noise {
     pub sample: u16, // output value that gets sent to the mixer
     pub enabled: bool,
@@ -37,7 +39,7 @@ impl Noise {
         } else {
             self.timer -= 1;
         }
-        // The mixer receives the current envelope volume except when 
+        // The mixer receives the current envelope volume except when
         // Bit 0 of the shift register is set, or the length counter is zero
         self.sample = if self.linear_feedback_sr & 1 == 1 || self.length_counter == 0 {
             0

@@ -1,8 +1,8 @@
 pub struct Envelope {
     pub period: u16, // constant volume/envelope period
     divider: u16,
-    pub decay_counter: u16, // remainder of envelope divider
-    pub start: bool, // restarts envelope
+    pub decay_counter: u16,        // remainder of envelope divider
+    pub start: bool,               // restarts envelope
     pub length_counter_halt: bool, // also the envelope loop flag
 }
 

@@ -2,9 +2,9 @@ mod addressing_modes;
 mod opcodes;
 mod utility;
 
+use crate::cartridge::Mapper;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::cartridge::Mapper;
 
 // RAM locations
 const STACK_OFFSET: usize = 0x100;
@@ -13,26 +13,36 @@ const RESET_VECTOR: usize = 0xFFFC;
 const IRQ_VECTOR: usize = 0xFFFE;
 
 // status register flags
-const CARRY_FLAG: u8             = 1 << 0;
-const ZERO_FLAG: u8              = 1 << 1;
+const CARRY_FLAG: u8 = 1 << 0;
+const ZERO_FLAG: u8 = 1 << 1;
 const INTERRUPT_DISABLE_FLAG: u8 = 1 << 2;
-const DECIMAL_FLAG: u8           = 1 << 3;
+const DECIMAL_FLAG: u8 = 1 << 3;
 // bits 4 and 5 are unused except when status register is copied to stack
-const OVERFLOW_FLAG: u8          = 1 << 6;
-const NEGATIVE_FLAG: u8          = 1 << 7;
+const OVERFLOW_FLAG: u8 = 1 << 6;
+const NEGATIVE_FLAG: u8 = 1 << 7;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Mode {
-    ABS, ABX, ABY, ACC,
-    IMM, IMP, IDX, IND,
-    INX, REL, ZPG, ZPX,
+    ABS,
+    ABX,
+    ABY,
+    ACC,
+    IMM,
+    IMP,
+    IDX,
+    IND,
+    INX,
+    REL,
+    ZPG,
+    ZPX,
     ZPY,
 }
 
 type AddressingFunction = fn(&mut Cpu) -> usize;
 
 impl Mode {
-    fn get(&self) -> (AddressingFunction, usize) { // usize is number of bytes the instruction takes, used for debug printing
+    fn get(&self) -> (AddressingFunction, usize) {
+        // usize is number of bytes the instruction takes, used for debug printing
         match self {
             Mode::ABS => (Cpu::absolute, 3),
             Mode::ABX => (Cpu::absolute_x, 3),
@@ -51,7 +61,6 @@ impl Mode {
     }
 }
 
-
 pub struct Cpu {
     mem: Vec<u8>, // CPU's RAM, $0000-$1FFF
     A: u8,        // accumulator
@@ -61,7 +70,7 @@ pub struct Cpu {
     S: u8,        // stack pointer
     P: u8,        // status
 
-    clock: u64, // number of ticks in current cycle
+    clock: u64,   // number of ticks in current cycle
     delay: usize, // for skipping cycles during OAM DMA
 
     mapper: Rc<RefCell<dyn Mapper>>, // cartridge data
@@ -74,14 +83,16 @@ pub struct Cpu {
     button_number: u8, // counter that scans the bits of the input register serially
 
     opcode_table: Vec<fn(&mut Self, usize, Mode)>, // function table
-    mode_table: Vec<Mode>, // address mode table
+    mode_table: Vec<Mode>,                         // address mode table
 }
 
 impl Cpu {
     pub fn new(mapper: Rc<RefCell<dyn Mapper>>, ppu: super::Ppu, apu: super::Apu) -> Self {
-        let mut cpu = Cpu{
+        let mut cpu = Cpu {
             mem: vec![0; 0x2000],
-            A: 0, X: 0, Y: 0,
+            A: 0,
+            X: 0,
+            Y: 0,
             PC: 0,
             S: 0xFD,
             P: 0x24,
@@ -94,42 +105,524 @@ impl Cpu {
             button_states: 0,
             button_number: 0,
             opcode_table: vec![
-        //         00        01        02        03        04        05        06        07        08        09        0A        0B        0C        0D        0E        0F
-        /*00*/  Cpu::brk, Cpu::ora, Cpu::bad, Cpu::slo, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo, Cpu::php, Cpu::ora, Cpu::asl, Cpu::nop, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo,  /*00*/
-        /*10*/  Cpu::bpl, Cpu::ora, Cpu::bad, Cpu::slo, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo, Cpu::clc, Cpu::ora, Cpu::nop, Cpu::slo, Cpu::nop, Cpu::ora, Cpu::asl, Cpu::slo,  /*10*/
-        /*20*/  Cpu::jsr, Cpu::and, Cpu::bad, Cpu::rla, Cpu::bit, Cpu::and, Cpu::rol, Cpu::rla, Cpu::plp, Cpu::and, Cpu::rol, Cpu::nop, Cpu::bit, Cpu::and, Cpu::rol, Cpu::rla,  /*20*/
-        /*30*/  Cpu::bmi, Cpu::and, Cpu::bad, Cpu::rla, Cpu::nop, Cpu::and, Cpu::rol, Cpu::rla, Cpu::sec, Cpu::and, Cpu::nop, Cpu::rla, Cpu::nop, Cpu::and, Cpu::rol, Cpu::rla,  /*30*/
-        /*40*/  Cpu::rti, Cpu::eor, Cpu::bad, Cpu::sre, Cpu::nop, Cpu::eor, Cpu::lsr, Cpu::sre, Cpu::pha, Cpu::eor, Cpu::lsr, Cpu::nop, Cpu::jmp, Cpu::eor, Cpu::lsr, Cpu::sre,  /*40*/
-        /*50*/  Cpu::bvc, Cpu::eor, Cpu::bad, Cpu::sre, Cpu::nop, Cpu::eor, Cpu::lsr, Cpu::sre, Cpu::cli, Cpu::eor, Cpu::nop, Cpu::sre, Cpu::nop, Cpu::eor, Cpu::lsr, Cpu::sre,  /*50*/
-        /*60*/  Cpu::rts, Cpu::adc, Cpu::bad, Cpu::rra, Cpu::nop, Cpu::adc, Cpu::ror, Cpu::rra, Cpu::pla, Cpu::adc, Cpu::ror, Cpu::nop, Cpu::jmp, Cpu::adc, Cpu::ror, Cpu::rra,  /*60*/
-        /*70*/  Cpu::bvs, Cpu::adc, Cpu::bad, Cpu::rra, Cpu::nop, Cpu::adc, Cpu::ror, Cpu::rra, Cpu::sei, Cpu::adc, Cpu::nop, Cpu::rra, Cpu::nop, Cpu::adc, Cpu::ror, Cpu::rra,  /*70*/
-        /*80*/  Cpu::nop, Cpu::sta, Cpu::nop, Cpu::sax, Cpu::sty, Cpu::sta, Cpu::stx, Cpu::sax, Cpu::dey, Cpu::nop, Cpu::txa, Cpu::nop, Cpu::sty, Cpu::sta, Cpu::stx, Cpu::sax,  /*80*/
-        /*90*/  Cpu::bcc, Cpu::sta, Cpu::bad, Cpu::nop, Cpu::sty, Cpu::sta, Cpu::stx, Cpu::sax, Cpu::tya, Cpu::sta, Cpu::txs, Cpu::nop, Cpu::nop, Cpu::sta, Cpu::nop, Cpu::nop,  /*90*/
-        /*A0*/  Cpu::ldy, Cpu::lda, Cpu::ldx, Cpu::lax, Cpu::ldy, Cpu::lda, Cpu::ldx, Cpu::lax, Cpu::tay, Cpu::lda, Cpu::tax, Cpu::nop, Cpu::ldy, Cpu::lda, Cpu::ldx, Cpu::lax,  /*A0*/
-        /*B0*/  Cpu::bcs, Cpu::lda, Cpu::bad, Cpu::lax, Cpu::ldy, Cpu::lda, Cpu::ldx, Cpu::lax, Cpu::clv, Cpu::lda, Cpu::tsx, Cpu::nop, Cpu::ldy, Cpu::lda, Cpu::ldx, Cpu::lax,  /*B0*/
-        /*C0*/  Cpu::cpy, Cpu::cmp, Cpu::nop, Cpu::dcp, Cpu::cpy, Cpu::cmp, Cpu::dec, Cpu::dcp, Cpu::iny, Cpu::cmp, Cpu::dex, Cpu::nop, Cpu::cpy, Cpu::cmp, Cpu::dec, Cpu::dcp,  /*C0*/
-        /*D0*/  Cpu::bne, Cpu::cmp, Cpu::bad, Cpu::dcp, Cpu::nop, Cpu::cmp, Cpu::dec, Cpu::dcp, Cpu::cld, Cpu::cmp, Cpu::nop, Cpu::dcp, Cpu::nop, Cpu::cmp, Cpu::dec, Cpu::dcp,  /*D0*/
-        /*E0*/  Cpu::cpx, Cpu::sbc, Cpu::nop, Cpu::isc, Cpu::cpx, Cpu::sbc, Cpu::inc, Cpu::isc, Cpu::inx, Cpu::sbc, Cpu::nop, Cpu::sbc, Cpu::cpx, Cpu::sbc, Cpu::inc, Cpu::isc,  /*E0*/
-        /*F0*/  Cpu::beq, Cpu::sbc, Cpu::bad, Cpu::isc, Cpu::nop, Cpu::sbc, Cpu::inc, Cpu::isc, Cpu::sed, Cpu::sbc, Cpu::nop, Cpu::isc, Cpu::nop, Cpu::sbc, Cpu::inc, Cpu::isc,  /*F0*/
+                //         00        01        02        03        04        05        06        07        08        09        0A        0B        0C        0D        0E        0F
+                /*00*/
+                Cpu::brk,
+                Cpu::ora,
+                Cpu::bad,
+                Cpu::slo,
+                Cpu::nop,
+                Cpu::ora,
+                Cpu::asl,
+                Cpu::slo,
+                Cpu::php,
+                Cpu::ora,
+                Cpu::asl,
+                Cpu::nop,
+                Cpu::nop,
+                Cpu::ora,
+                Cpu::asl,
+                Cpu::slo, /*00*/
+                /*10*/ Cpu::bpl,
+                Cpu::ora,
+                Cpu::bad,
+                Cpu::slo,
+                Cpu::nop,
+                Cpu::ora,
+                Cpu::asl,
+                Cpu::slo,
+                Cpu::clc,
+                Cpu::ora,
+                Cpu::nop,
+                Cpu::slo,
+                Cpu::nop,
+                Cpu::ora,
+                Cpu::asl,
+                Cpu::slo, /*10*/
+                /*20*/ Cpu::jsr,
+                Cpu::and,
+                Cpu::bad,
+                Cpu::rla,
+                Cpu::bit,
+                Cpu::and,
+                Cpu::rol,
+                Cpu::rla,
+                Cpu::plp,
+                Cpu::and,
+                Cpu::rol,
+                Cpu::nop,
+                Cpu::bit,
+                Cpu::and,
+                Cpu::rol,
+                Cpu::rla, /*20*/
+                /*30*/ Cpu::bmi,
+                Cpu::and,
+                Cpu::bad,
+                Cpu::rla,
+                Cpu::nop,
+                Cpu::and,
+                Cpu::rol,
+                Cpu::rla,
+                Cpu::sec,
+                Cpu::and,
+                Cpu::nop,
+                Cpu::rla,
+                Cpu::nop,
+                Cpu::and,
+                Cpu::rol,
+                Cpu::rla, /*30*/
+                /*40*/ Cpu::rti,
+                Cpu::eor,
+                Cpu::bad,
+                Cpu::sre,
+                Cpu::nop,
+                Cpu::eor,
+                Cpu::lsr,
+                Cpu::sre,
+                Cpu::pha,
+                Cpu::eor,
+                Cpu::lsr,
+                Cpu::nop,
+                Cpu::jmp,
+                Cpu::eor,
+                Cpu::lsr,
+                Cpu::sre, /*40*/
+                /*50*/ Cpu::bvc,
+                Cpu::eor,
+                Cpu::bad,
+                Cpu::sre,
+                Cpu::nop,
+                Cpu::eor,
+                Cpu::lsr,
+                Cpu::sre,
+                Cpu::cli,
+                Cpu::eor,
+                Cpu::nop,
+                Cpu::sre,
+                Cpu::nop,
+                Cpu::eor,
+                Cpu::lsr,
+                Cpu::sre, /*50*/
+                /*60*/ Cpu::rts,
+                Cpu::adc,
+                Cpu::bad,
+                Cpu::rra,
+                Cpu::nop,
+                Cpu::adc,
+                Cpu::ror,
+                Cpu::rra,
+                Cpu::pla,
+                Cpu::adc,
+                Cpu::ror,
+                Cpu::nop,
+                Cpu::jmp,
+                Cpu::adc,
+                Cpu::ror,
+                Cpu::rra, /*60*/
+                /*70*/ Cpu::bvs,
+                Cpu::adc,
+                Cpu::bad,
+                Cpu::rra,
+                Cpu::nop,
+                Cpu::adc,
+                Cpu::ror,
+                Cpu::rra,
+                Cpu::sei,
+                Cpu::adc,
+                Cpu::nop,
+                Cpu::rra,
+                Cpu::nop,
+                Cpu::adc,
+                Cpu::ror,
+                Cpu::rra, /*70*/
+                /*80*/ Cpu::nop,
+                Cpu::sta,
+                Cpu::nop,
+                Cpu::sax,
+                Cpu::sty,
+                Cpu::sta,
+                Cpu::stx,
+                Cpu::sax,
+                Cpu::dey,
+                Cpu::nop,
+                Cpu::txa,
+                Cpu::nop,
+                Cpu::sty,
+                Cpu::sta,
+                Cpu::stx,
+                Cpu::sax, /*80*/
+                /*90*/ Cpu::bcc,
+                Cpu::sta,
+                Cpu::bad,
+                Cpu::nop,
+                Cpu::sty,
+                Cpu::sta,
+                Cpu::stx,
+                Cpu::sax,
+                Cpu::tya,
+                Cpu::sta,
+                Cpu::txs,
+                Cpu::nop,
+                Cpu::nop,
+                Cpu::sta,
+                Cpu::nop,
+                Cpu::nop, /*90*/
+                /*A0*/ Cpu::ldy,
+                Cpu::lda,
+                Cpu::ldx,
+                Cpu::lax,
+                Cpu::ldy,
+                Cpu::lda,
+                Cpu::ldx,
+                Cpu::lax,
+                Cpu::tay,
+                Cpu::lda,
+                Cpu::tax,
+                Cpu::nop,
+                Cpu::ldy,
+                Cpu::lda,
+                Cpu::ldx,
+                Cpu::lax, /*A0*/
+                /*B0*/ Cpu::bcs,
+                Cpu::lda,
+                Cpu::bad,
+                Cpu::lax,
+                Cpu::ldy,
+                Cpu::lda,
+                Cpu::ldx,
+                Cpu::lax,
+                Cpu::clv,
+                Cpu::lda,
+                Cpu::tsx,
+                Cpu::nop,
+                Cpu::ldy,
+                Cpu::lda,
+                Cpu::ldx,
+                Cpu::lax, /*B0*/
+                /*C0*/ Cpu::cpy,
+                Cpu::cmp,
+                Cpu::nop,
+                Cpu::dcp,
+                Cpu::cpy,
+                Cpu::cmp,
+                Cpu::dec,
+                Cpu::dcp,
+                Cpu::iny,
+                Cpu::cmp,
+                Cpu::dex,
+                Cpu::nop,
+                Cpu::cpy,
+                Cpu::cmp,
+                Cpu::dec,
+                Cpu::dcp, /*C0*/
+                /*D0*/ Cpu::bne,
+                Cpu::cmp,
+                Cpu::bad,
+                Cpu::dcp,
+                Cpu::nop,
+                Cpu::cmp,
+                Cpu::dec,
+                Cpu::dcp,
+                Cpu::cld,
+                Cpu::cmp,
+                Cpu::nop,
+                Cpu::dcp,
+                Cpu::nop,
+                Cpu::cmp,
+                Cpu::dec,
+                Cpu::dcp, /*D0*/
+                /*E0*/ Cpu::cpx,
+                Cpu::sbc,
+                Cpu::nop,
+                Cpu::isc,
+                Cpu::cpx,
+                Cpu::sbc,
+                Cpu::inc,
+                Cpu::isc,
+                Cpu::inx,
+                Cpu::sbc,
+                Cpu::nop,
+                Cpu::sbc,
+                Cpu::cpx,
+                Cpu::sbc,
+                Cpu::inc,
+                Cpu::isc, /*E0*/
+                /*F0*/ Cpu::beq,
+                Cpu::sbc,
+                Cpu::bad,
+                Cpu::isc,
+                Cpu::nop,
+                Cpu::sbc,
+                Cpu::inc,
+                Cpu::isc,
+                Cpu::sed,
+                Cpu::sbc,
+                Cpu::nop,
+                Cpu::isc,
+                Cpu::nop,
+                Cpu::sbc,
+                Cpu::inc,
+                Cpu::isc, /*F0*/
             ],
             mode_table: vec![
-        //          00         01         02         03         04         05         06         07         08         09         0A         0B         0C         0D         0E         0F
-        /*00*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*00*/
-        /*10*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*10*/
-        /*20*/  Mode::ABS, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*20*/
-        /*30*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*30*/
-        /*40*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*40*/
-        /*50*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*50*/
-        /*60*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::IND, Mode::ABS, Mode::ABS, Mode::ABS,  /*60*/
-        /*70*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*70*/
-        /*80*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*80*/
-        /*90*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*90*/
-        /*A0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*A0*/
-        /*B0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*B0*/
-        /*C0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*C0*/
-        /*D0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*D0*/
-        /*E0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*E0*/
-        /*F0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*F0*/
+                //          00         01         02         03         04         05         06         07         08         09         0A         0B         0C         0D         0E         0F
+                /*00*/
+                Mode::IMP,
+                Mode::IDX,
+                Mode::IMP,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ACC,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*00*/
+                /*10*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*10*/
+                /*20*/ Mode::ABS,
+                Mode::IDX,
+                Mode::IMP,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ACC,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*20*/
+                /*30*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*30*/
+                /*40*/ Mode::IMP,
+                Mode::IDX,
+                Mode::IMP,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ACC,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*40*/
+                /*50*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*50*/
+                /*60*/ Mode::IMP,
+                Mode::IDX,
+                Mode::IMP,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ACC,
+                Mode::IMM,
+                Mode::IND,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*60*/
+                /*70*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*70*/
+                /*80*/ Mode::IMM,
+                Mode::IDX,
+                Mode::IMM,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*80*/
+                /*90*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPY,
+                Mode::ZPY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABY,
+                Mode::ABY, /*90*/
+                /*A0*/ Mode::IMM,
+                Mode::IDX,
+                Mode::IMM,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*A0*/
+                /*B0*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPY,
+                Mode::ZPY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABY,
+                Mode::ABY, /*B0*/
+                /*C0*/ Mode::IMM,
+                Mode::IDX,
+                Mode::IMM,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*C0*/
+                /*D0*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*D0*/
+                /*E0*/ Mode::IMM,
+                Mode::IDX,
+                Mode::IMM,
+                Mode::IDX,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::ZPG,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::IMP,
+                Mode::IMM,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS,
+                Mode::ABS, /*E0*/
+                /*F0*/ Mode::REL,
+                Mode::INX,
+                Mode::IMP,
+                Mode::INX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::ZPX,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::IMP,
+                Mode::ABY,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX,
+                Mode::ABX, /*F0*/
             ],
         };
         cpu.PC = ((cpu.read(RESET_VECTOR + 1) as usize) << 8) + cpu.read(RESET_VECTOR) as usize;
@@ -137,7 +630,6 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> u64 {
-        
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
             self.delay -= 1;
@@ -182,9 +674,9 @@ impl Cpu {
         let val = match address {
             0x0000..=0x1FFF => self.mem[address % 0x0800],
             0x2000..=0x3FFF => self.read_ppu_reg(address % 8),
-            0x4014          => self.read_ppu_reg(8),
-            0x4015          => self.apu.read_status(),
-            0x4016          => self.read_controller(),
+            0x4014 => self.read_ppu_reg(8),
+            0x4015 => self.apu.read_status(),
+            0x4016 => self.read_controller(),
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
             0x4020..=0xFFFF => self.mapper.borrow_mut().read(address),
@@ -198,8 +690,8 @@ impl Cpu {
         match address {
             0x0000..=0x1FFF => self.mem[address % 0x0800] = val,
             0x2000..=0x3FFF => self.write_ppu_reg(address % 8, val),
-            0x4014          => self.write_ppu_reg(8, val),
-            0x4016          => self.write_controller(val),
+            0x4014 => self.write_ppu_reg(8, val),
+            0x4016 => self.write_controller(val),
             0x4000..=0x4017 => self.apu.write_reg(address, val),
             0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
             0x4020..=0xFFFF => self.mapper.borrow_mut().write(address, val),
@@ -209,7 +701,7 @@ impl Cpu {
 
     fn read_controller(&mut self) -> u8 {
         let bit = match self.button_number < 8 {
-            true => (self.button_states & (1<<self.button_number) != 0) as u8,
+            true => (self.button_states & (1 << self.button_number) != 0) as u8,
             false => 1,
         };
         if self.strobe & 1 != 0 {
@@ -254,8 +746,8 @@ impl Cpu {
                 }
                 self.ppu.write_oam_dma(data);
                 let is_odd = self.clock % 2 != 0;
-                self.delay = 513 + if is_odd {1} else {0};
-            },
+                self.delay = 513 + if is_odd { 1 } else { 0 };
+            }
             _ => panic!("wrote to bad ppu reg: {}", reg_num),
         }
     }
@@ -265,19 +757,27 @@ impl Cpu {
         let operands = match num_bytes {
             1 => "     ".to_string(),
             2 => format!("{:02X}   ", self.read(pc + 1)),
-            3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc+2)),
+            3 => format!("{:02X} {:02X}", self.read(pc + 1), self.read(pc + 2)),
             _ => "error".to_string(),
         };
-        println!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-            pc, self.read(pc), operands, _OPCODE_DISPLAY_NAMES[opcode],
-            self.A, self.X, self.Y, self.P, self.S,
+        println!(
+            "{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+            pc,
+            self.read(pc),
+            operands,
+            _OPCODE_DISPLAY_NAMES[opcode],
+            self.A,
+            self.X,
+            self.Y,
+            self.P,
+            self.S,
         );
     }
 
     pub fn _memory_at(&mut self, address: usize, amount: usize) -> Vec<u8> {
         let mut ret = vec![];
         for i in 0..amount {
-            ret.push(self.read(address+i));
+            ret.push(self.read(address + i));
         }
         ret
     }
@@ -298,36 +798,24 @@ $4020-$FFFF 	$BFE0 	Cartridge space: PRG ROM, PRG RAM, and mapper registers (See
 
 // For debug output
 const _OPCODE_DISPLAY_NAMES: [&str; 256] = [
-	"BRK", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
-	"BPL", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
-	"JSR", "AND", "BAD", "RLA", "BIT", "AND", "ROL", "RLA",
-	"PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
-	"BMI", "AND", "BAD", "RLA", "NOP", "AND", "ROL", "RLA",
-	"SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
-	"RTI", "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR", "SRE",
-	"BVC", "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
-	"RTS", "ADC", "BAD", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
-	"BVS", "ADC", "BAD", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
-	"NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX",
-	"DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX", "SAX",
-	"BCC", "STA", "BAD", "AHX", "STY", "STA", "STX", "SAX",
-	"TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX", "AHX",
-	"LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"BCS", "LDA", "BAD", "LAX", "LDY", "LDA", "LDX", "LAX",
-	"CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
-	"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP",
-	"INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP",
-	"BNE", "CMP", "BAD", "DCP", "NOP", "CMP", "DEC", "DCP",
-	"CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
-	"CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC",
-	"INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
-	"BEQ", "SBC", "BAD", "ISC", "NOP", "SBC", "INC", "ISC",
-    "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
+    "BRK", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO", "PHP", "ORA", "ASL", "ANC", "NOP",
+    "ORA", "ASL", "SLO", "BPL", "ORA", "BAD", "SLO", "NOP", "ORA", "ASL", "SLO", "CLC", "ORA",
+    "NOP", "SLO", "NOP", "ORA", "ASL", "SLO", "JSR", "AND", "BAD", "RLA", "BIT", "AND", "ROL",
+    "RLA", "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA", "BMI", "AND", "BAD", "RLA",
+    "NOP", "AND", "ROL", "RLA", "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA", "RTI",
+    "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE", "PHA", "EOR", "LSR", "ALR", "JMP", "EOR",
+    "LSR", "SRE", "BVC", "EOR", "BAD", "SRE", "NOP", "EOR", "LSR", "SRE", "CLI", "EOR", "NOP",
+    "SRE", "NOP", "EOR", "LSR", "SRE", "RTS", "ADC", "BAD", "RRA", "NOP", "ADC", "ROR", "RRA",
+    "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA", "BVS", "ADC", "BAD", "RRA", "NOP",
+    "ADC", "ROR", "RRA", "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA", "NOP", "STA",
+    "NOP", "SAX", "STY", "STA", "STX", "SAX", "DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX",
+    "SAX", "BCC", "STA", "BAD", "AHX", "STY", "STA", "STX", "SAX", "TYA", "STA", "TXS", "TAS",
+    "SHY", "STA", "SHX", "AHX", "LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX", "TAY",
+    "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX", "BCS", "LDA", "BAD", "LAX", "LDY", "LDA",
+    "LDX", "LAX", "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX", "CPY", "CMP", "NOP",
+    "DCP", "CPY", "CMP", "DEC", "DCP", "INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP",
+    "BNE", "CMP", "BAD", "DCP", "NOP", "CMP", "DEC", "DCP", "CLD", "CMP", "NOP", "DCP", "NOP",
+    "CMP", "DEC", "DCP", "CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC", "INX", "SBC",
+    "NOP", "SBC", "CPX", "SBC", "INC", "ISC", "BEQ", "SBC", "BAD", "ISC", "NOP", "SBC", "INC",
+    "ISC", "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
 ];

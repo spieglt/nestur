@@ -1,7 +1,6 @@
-use super::{CARRY_FLAG, NEGATIVE_FLAG, STACK_OFFSET, ZERO_FLAG, Mode};
+use super::{Mode, CARRY_FLAG, NEGATIVE_FLAG, STACK_OFFSET, ZERO_FLAG};
 
 impl super::Cpu {
-
     pub fn advance_pc(&mut self, mode: Mode) {
         self.PC += match mode {
             Mode::ABS => 3,
@@ -19,19 +18,19 @@ impl super::Cpu {
             Mode::ZPY => 2,
         }
     }
-    
+
     pub fn add_offset_to_pc(&mut self, offset: i8) {
         match offset >= 0 {
             true => {
                 let decoded_offset = offset as usize;
                 self.PC += decoded_offset;
-            },
+            }
             false => {
                 // instr_test-v5/rom_singles/11-stack.nes:
                 // letting decoded_offset be (-offset) as usize was allowing for overflow if offset was -128/0b10000000
                 let decoded_offset = (-offset) as u8;
                 self.PC -= decoded_offset as usize;
-            },
+            }
         }
     }
 
@@ -62,7 +61,7 @@ impl super::Cpu {
         } else {
             self.P &= 0xFF - CARRY_FLAG;
         }
-        self.set_zero_flag(if reg == byte {0} else {1});
+        self.set_zero_flag(if reg == byte { 0 } else { 1 });
         let diff = reg.wrapping_sub(byte);
         self.set_negative_flag(diff);
     }
@@ -93,5 +92,4 @@ impl super::Cpu {
             self.P &= 0xFF - ZERO_FLAG;
         }
     }
-
 }

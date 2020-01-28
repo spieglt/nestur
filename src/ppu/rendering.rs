@@ -1,7 +1,6 @@
 use super::cpu_registers::set_bit;
 
 impl super::Ppu {
-
     pub fn perform_memory_fetch(&mut self) {
         match self.line_cycle % 8 {
             0 => self.inc_coarse_x(),
@@ -27,7 +26,8 @@ impl super::Ppu {
     }
 
     pub fn load_data_into_registers(&mut self) {
-        if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+        if self.line_cycle % 8 == 1 {
+            // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
             // These contain the pattern table data for two tiles. Every 8 cycles, the data for the next
             // tile is loaded into the upper 8 bits of this shift register. Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
             self.background_pattern_sr_low |= self.low_pattern_table_byte as u16;
@@ -46,16 +46,16 @@ impl super::Ppu {
         let byte = self.read(address as usize);
         // figure out which two bits are being represented, ignoring fine x and fine y
         // left or right:
-        let coarse_x =  self.v & 0b00000000_00011111;
+        let coarse_x = self.v & 0b00000000_00011111;
         let coarse_y = (self.v & 0b00000011_11100000) >> 5;
         let left_or_right = (coarse_x / 2) % 2; // 0 == left, 1 == right
         let top_or_bottom = (coarse_y / 2) % 2; // 0 == top, 1 == bottom
-        // grab the needed two bits
+                                                // grab the needed two bits
         self.attribute_table_byte = match (top_or_bottom, left_or_right) {
-            (0,0) => (byte >> 0) & 0b00000011,
-            (0,1) => (byte >> 2) & 0b00000011,
-            (1,0) => (byte >> 4) & 0b00000011,
-            (1,1) => (byte >> 6) & 0b00000011,
+            (0, 0) => (byte >> 0) & 0b00000011,
+            (0, 1) => (byte >> 2) & 0b00000011,
+            (1, 0) => (byte >> 4) & 0b00000011,
+            (1, 1) => (byte >> 6) & 0b00000011,
             _ => panic!("should not get here"),
         };
     }
@@ -84,10 +84,10 @@ impl super::Ppu {
         let (mut sprite_pixel, current_sprite) = self.select_sprite_pixel();
 
         // extract low and high bits from palette shift registers according to fine x, starting from left
-        let low_palette_bit = (self.background_palette_sr_low & (1 << (7-self.x)) != 0) as u8;
-        let high_palette_bit = (self.background_palette_sr_high & (1 << (7-self.x)) != 0) as u8;
+        let low_palette_bit = (self.background_palette_sr_low & (1 << (7 - self.x)) != 0) as u8;
+        let high_palette_bit = (self.background_palette_sr_high & (1 << (7 - self.x)) != 0) as u8;
         let palette_offset = (high_palette_bit << 1) | low_palette_bit;
-        
+
         if x < 8 && !self.show_background_left {
             background_pixel = 0;
         }
@@ -95,18 +95,22 @@ impl super::Ppu {
             sprite_pixel = 0;
         }
         let mut palette_address = 0;
-        if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
+        if background_pixel == 0 && sprite_pixel != 0 {
+            // displaying the sprite
             palette_address += 0x10; // second half of palette table, "Background/Sprite select"
             palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
             palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
-        } else if background_pixel != 0 && sprite_pixel == 0 { // displaying the background pixel
+        } else if background_pixel != 0 && sprite_pixel == 0 {
+            // displaying the background pixel
             palette_address += palette_offset << 2; // Palette number from attribute table or OAM
             palette_address += background_pixel; // Pixel value from tile data
         } else if background_pixel != 0 && sprite_pixel != 0 {
-            if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
+            if self.sprite_indexes[current_sprite] == 0 {
+                // don't access index current_sprite. need to know which sprite we're on horizontally.
                 self.sprite_zero_hit = true;
             }
-            if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
+            if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 {
+                // sprite has high priority
                 palette_address += 0x10;
                 palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
                 palette_address += sprite_pixel;
@@ -118,8 +122,8 @@ impl super::Ppu {
         // let pixel = self.read(palette_address as usize) as usize;
         let pixel = self.palette_ram[palette_address as usize] as usize;
         let color: (u8, u8, u8) = super::PALETTE_TABLE[pixel];
-        
-        (x,y,color)
+
+        (x, y, color)
     }
 
     pub fn select_background_pixel(&mut self) -> u8 {
@@ -127,7 +131,7 @@ impl super::Ppu {
             // Returned background pixel is a value between 0 and 3.
             // the bit from background_pattern_sr_low (low pattern table byte) in the 0th place,
             // and the value of the background_pattern_sr_high (high pattern table byte) in the 1st place.
-            let low_bit  = (self.background_pattern_sr_low & (1 << (15 - self.x)) != 0) as u8;
+            let low_bit = (self.background_pattern_sr_low & (1 << (15 - self.x)) != 0) as u8;
             let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x)) != 0) as u8;
             (high_bit << 1) | low_bit
         } else {
@@ -139,7 +143,7 @@ impl super::Ppu {
         // Returns (sprite_pixel, index of sprite_pixel within secondary_oam/shift registers)
         if self.show_sprites {
             // sprite pixel is a value between 0 and 3 representing the two sprite pattern table shift registers
-            let mut low_bit  = 0;
+            let mut low_bit = 0;
             let mut high_bit = 0;
             let mut secondary_index = 0;
             for i in 0..self.num_sprites {
@@ -149,8 +153,8 @@ impl super::Ppu {
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     secondary_index = i;
-                    low_bit  = (self.sprite_pattern_table_srs[i].0 & 1<<7 != 0) as u8;
-                    high_bit = (self.sprite_pattern_table_srs[i].1 & 1<<7 != 0) as u8;
+                    low_bit = (self.sprite_pattern_table_srs[i].0 & 1 << 7 != 0) as u8;
+                    high_bit = (self.sprite_pattern_table_srs[i].1 & 1 << 7 != 0) as u8;
                     if !(low_bit == 0 && high_bit == 0) {
                         break;
                     }
@@ -175,13 +179,13 @@ impl super::Ppu {
         }
     }
 
-    pub fn evaluate_sprites(&mut self) {        
+    pub fn evaluate_sprites(&mut self) {
         let mut sprite_count = 0;
         for n in 0..64 {
-            let y_coord = self.primary_oam[(n*4)+0];
+            let y_coord = self.primary_oam[(n * 4) + 0];
             if self.y_in_range(y_coord) {
                 for i in 0..4 {
-                    self.secondary_oam[(sprite_count*4)+i] = self.primary_oam[(n*4)+i];
+                    self.secondary_oam[(sprite_count * 4) + i] = self.primary_oam[(n * 4) + i];
                 }
                 self.sprite_indexes[sprite_count] = n as u8;
                 sprite_count += 1;
@@ -193,31 +197,34 @@ impl super::Ppu {
             }
         }
         self.num_sprites = sprite_count;
-
     }
 
     pub fn fetch_sprites(&mut self) {
         for i in 0..self.num_sprites {
             let mut address: usize;
-            let sprite_y_position = self.secondary_oam[(4*i)+0] as usize; // byte 0 of sprite, sprite's vertical position on screen
-            let sprite_tile_index = self.secondary_oam[(4*i)+1] as usize; // byte 1 of sprite, sprite's location within pattern table
-            let sprite_attributes = self.secondary_oam[(4*i)+2];          // byte 2 of sprite, sprite's palette, priority, and flip attributes
-            let sprite_x_position = self.secondary_oam[(4*i)+3];          // byte 3 of sprite, sprite's horizontal position on screen
-            let flipped_vertically = sprite_attributes & (1<<7) != 0;
-            let flipped_horizontally = sprite_attributes & (1<<6) != 0;
+            let sprite_y_position = self.secondary_oam[(4 * i) + 0] as usize; // byte 0 of sprite, sprite's vertical position on screen
+            let sprite_tile_index = self.secondary_oam[(4 * i) + 1] as usize; // byte 1 of sprite, sprite's location within pattern table
+            let sprite_attributes = self.secondary_oam[(4 * i) + 2]; // byte 2 of sprite, sprite's palette, priority, and flip attributes
+            let sprite_x_position = self.secondary_oam[(4 * i) + 3]; // byte 3 of sprite, sprite's horizontal position on screen
+            let flipped_vertically = sprite_attributes & (1 << 7) != 0;
+            let flipped_horizontally = sprite_attributes & (1 << 6) != 0;
             // For 8x8 sprites, this is the tile number of this sprite within the pattern table selected in bit 3 of PPUCTRL ($2000).
             if self.sprite_size == 8 {
                 address = self.sprite_pattern_table_base;
-                address += sprite_tile_index*16;
+                address += sprite_tile_index * 16;
                 address += if !flipped_vertically {
                     self.scanline - sprite_y_position // row-within-sprite offset is difference between current scanline and top of sprite
                 } else {
                     self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
                 };
-            // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number. 
+            // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number.
             } else {
-                address = if sprite_tile_index & 1 == 0 { 0x0 } else { 0x1000 };
-                address += (sprite_tile_index & 0xFFFF-1) << 4; // turn off bottom bit BEFORE shifting
+                address = if sprite_tile_index & 1 == 0 {
+                    0x0
+                } else {
+                    0x1000
+                };
+                address += (sprite_tile_index & 0xFFFF - 1) << 4; // turn off bottom bit BEFORE shifting
                 let fine_y = if !flipped_vertically {
                     self.scanline - sprite_y_position
                 } else {
@@ -234,7 +241,10 @@ impl super::Ppu {
             let high_pattern_table_byte = self.read(address + 8);
             let mut shift_reg_vals = (0, 0);
             for j in 0..8 {
-                let current_bits = (low_pattern_table_byte & (1 << j), high_pattern_table_byte & (1 << j));
+                let current_bits = (
+                    low_pattern_table_byte & (1 << j),
+                    high_pattern_table_byte & (1 << j),
+                );
                 if !flipped_horizontally {
                     // just copy each bit in same order
                     shift_reg_vals.0 |= current_bits.0;
@@ -255,28 +265,29 @@ impl super::Ppu {
     }
 
     pub fn inc_coarse_x(&mut self) {
-        if self.v & 0x001F == 0x001F { // if coarse X == 31
-            self.v &= !0x001F;         // coarse X = 0
-            self.v ^= 1<<10;           // switch horizontal nametable
+        if self.v & 0x001F == 0x001F {
+            // if coarse X == 31
+            self.v &= !0x001F; // coarse X = 0
+            self.v ^= 1 << 10; // switch horizontal nametable
         } else {
             self.v += 1;
         }
     }
 
     pub fn inc_y(&mut self) {
-        // If rendering is enabled, fine Y is incremented at dot 256 of each scanline, 
-        // overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically. 
-        let mut fine_y   = (self.v & 0b01110000_00000000) >> 12;
+        // If rendering is enabled, fine Y is incremented at dot 256 of each scanline,
+        // overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically.
+        let mut fine_y = (self.v & 0b01110000_00000000) >> 12;
         let mut coarse_y = (self.v & 0b00000011_11100000) >> 5;
         if fine_y < 7 {
             fine_y += 1;
         } else {
             fine_y = 0;
             // Row 29 is the last row of tiles in a nametable. To wrap to the next nametable when
-            // incrementing coarse Y from 29, the vertical nametable is switched by toggling bit 
+            // incrementing coarse Y from 29, the vertical nametable is switched by toggling bit
             // 11, and coarse Y wraps to row 0.
             if coarse_y == 29 {
-                self.v ^= 1<<11;
+                self.v ^= 1 << 11;
                 coarse_y = 0;
             // Coarse Y can be set out of bounds (> 29), which will cause the PPU to read the
             // attribute data stored there as tile data. If coarse Y is incremented from 31,
@@ -303,8 +314,8 @@ impl super::Ppu {
         // v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
         let mask = 0b00000100_00011111;
         let t_vals = self.t & mask; // grab bits of t
-        self.v &= !mask;            // turn off bits of v
-        self.v |= t_vals;           // apply bits of t
+        self.v &= !mask; // turn off bits of v
+        self.v |= t_vals; // apply bits of t
     }
 
     pub fn copy_vertical(&mut self) {
@@ -320,8 +331,8 @@ impl super::Ppu {
     }
 
     pub fn y_in_range(&self, y_coord: u8) -> bool {
-        self.scanline >= (y_coord as usize) && 
-            self.scanline - (y_coord as usize) < self.sprite_size as usize
+        self.scanline >= (y_coord as usize)
+            && self.scanline - (y_coord as usize) < self.sprite_size as usize
     }
 
     pub fn nmi_change(&mut self) {

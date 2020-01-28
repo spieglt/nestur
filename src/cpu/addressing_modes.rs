@@ -1,10 +1,9 @@
 impl super::Cpu {
-
     pub fn absolute(&mut self) -> usize {
         self.clock += 4;
         <usize>::from(
             ((self.read(self.PC + 2) as usize) << 8) + // high byte, little endian
-            (self.read(self.PC + 1)) as usize // low byte
+            (self.read(self.PC + 1)) as usize, // low byte
         )
     }
 
@@ -13,10 +12,10 @@ impl super::Cpu {
         let old_address = self.absolute();
         let new_address = old_address + self.X as usize;
         match current_opcode {
-            0x1C | 0x1D | 0x3C | 0x3D | 0x5C | 0x5D | 0x7C | 0x7D | 0xBC | 0xBD | 0xDC | 0xDD | 0xFC | 0xFD
-                => self.address_page_cross(old_address, new_address),
-            0x1E | 0x1F | 0x3E | 0x3F | 0x5E | 0x5F | 0x7E | 0x7F | 0x9D | 0xC3 | 0xC7 | 0xCF | 0xD3 | 0xD7 | 0xDB | 0xDE | 0xDF | 0xFE | 0xFF
-                => self.clock += 1,
+            0x1C | 0x1D | 0x3C | 0x3D | 0x5C | 0x5D | 0x7C | 0x7D | 0xBC | 0xBD | 0xDC | 0xDD
+            | 0xFC | 0xFD => self.address_page_cross(old_address, new_address),
+            0x1E | 0x1F | 0x3E | 0x3F | 0x5E | 0x5F | 0x7E | 0x7F | 0x9D | 0xC3 | 0xC7 | 0xCF
+            | 0xD3 | 0xD7 | 0xDB | 0xDE | 0xDF | 0xFE | 0xFF => self.clock += 1,
             _ => panic!("illegal opcode using abs x: {:02x}", current_opcode),
         }
         new_address
@@ -62,12 +61,12 @@ impl super::Cpu {
     }
 
     pub fn indirect(&mut self) -> usize {
-        let operand_address = ((self.read(self.PC + 2) as usize) << 8)
-            + (self.read(self.PC + 1) as usize);
+        let operand_address =
+            ((self.read(self.PC + 2) as usize) << 8) + (self.read(self.PC + 1) as usize);
         let low_byte = self.read(operand_address) as usize;
         // BUG TIME! from https://wiki.nesdev.com/w/index.php/Errata
         // "JMP ($xxyy), or JMP indirect, does not advance pages if the lower eight bits
-        // of the specified address is $FF; the upper eight bits are fetched from $xx00, 
+        // of the specified address is $FF; the upper eight bits are fetched from $xx00,
         // 255 bytes earlier, instead of the expected following byte."
         let high_byte = if operand_address & 0xFF == 0xFF {
             (self.read(operand_address as usize - 0xFF) as usize) << 8
@@ -118,5 +117,4 @@ impl super::Cpu {
         self.clock += 4;
         operand.wrapping_add(self.Y) as usize
     }
-
 }

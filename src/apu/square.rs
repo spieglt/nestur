@@ -11,7 +11,7 @@ pub struct Square {
     pub sample: u16, // output value that gets sent to the mixer
     pub enabled: bool,
     constant_volume_flag: bool, // (0: use volume from envelope; 1: use constant volume)
-    first_channel: bool, // hack to detect timing difference in clock_sweep()
+    first_channel: bool,        // hack to detect timing difference in clock_sweep()
 
     timer: u16,
     timer_period: u16,
@@ -67,14 +67,15 @@ impl Square {
         self.sample = if self.duty_cycle[self.duty_counter] == 0 // the sequencer output is zero, or
             || self.timer_period > 0x7FF // overflow from the sweep unit's adder is silencing the channel,
             || self.length_counter == 0 // the length counter is zero, or
-            || self.timer_period < 8 // the timer has a value less than eight.
-            {
-                0
-            } else if self.constant_volume_flag {
-                self.envelope.period
-            } else {
-                self.envelope.decay_counter
-            };
+            || self.timer_period < 8
+        // the timer has a value less than eight.
+        {
+            0
+        } else if self.constant_volume_flag {
+            self.envelope.period
+        } else {
+            self.envelope.decay_counter
+        };
     }
 
     pub fn clock_length_counter(&mut self) {
@@ -87,20 +88,25 @@ impl Square {
         self.calculate_target_period();
         // When the frame counter sends a half-frame clock (at 120 or 96 Hz), two things happen.
         // If the divider's counter is zero, the sweep is enabled, and the sweep unit is not muting the channel: The pulse's period is adjusted.
-        if self.sweep_counter == 0 && self.sweep_enabled && !(self.timer_period < 8 || self.target_period > 0x7FF) {
+        if self.sweep_counter == 0
+            && self.sweep_enabled
+            && !(self.timer_period < 8 || self.target_period > 0x7FF)
+        {
             self.timer_period = self.target_period;
         }
         // If the divider's counter is zero or the reload flag is true: The counter is set to P and the reload flag is cleared. Otherwise, the counter is decremented.
         if self.sweep_counter == 0 || self.sweep_reload {
             self.sweep_counter = self.sweep_period;
             self.sweep_reload = false;
-            if self.sweep_enabled { self.timer_period = self.target_period; } // This fixes the DK walking sound. Why? Not reflected in documentation.
+            if self.sweep_enabled {
+                self.timer_period = self.target_period;
+            } // This fixes the DK walking sound. Why? Not reflected in documentation.
         } else {
             self.sweep_counter -= 1;
         }
     }
 
-    // Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes. 
+    // Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes.
     pub fn calculate_target_period(&mut self) {
         // The sweep unit continuously calculates each channel's target period in this way:
         // A barrel shifter shifts the channel's 11-bit raw timer period right by the shift count, producing the change amount.
@@ -125,8 +131,8 @@ impl Square {
     pub fn write_duty(&mut self, value: u8) {
         // The duty cycle is changed (see table below), but the sequencer's current position isn't affected.
         self.duty_cycle = DUTY_CYCLE_SEQUENCES[(value >> 6) as usize];
-        self.envelope.length_counter_halt = value & (1<<5) != 0;
-        self.constant_volume_flag = value & (1<<4) != 0;
+        self.envelope.length_counter_halt = value & (1 << 5) != 0;
+        self.constant_volume_flag = value & (1 << 4) != 0;
         self.envelope.period = value as u16 & 0b1111;
     }
 

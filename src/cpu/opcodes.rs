@@ -1,15 +1,17 @@
-use super::{CARRY_FLAG, DECIMAL_FLAG, INTERRUPT_DISABLE_FLAG, IRQ_VECTOR, NEGATIVE_FLAG, NMI_VECTOR, OVERFLOW_FLAG, ZERO_FLAG, Mode};
+use super::{
+    Mode, CARRY_FLAG, DECIMAL_FLAG, INTERRUPT_DISABLE_FLAG, IRQ_VECTOR, NEGATIVE_FLAG, NMI_VECTOR,
+    OVERFLOW_FLAG, ZERO_FLAG,
+};
 
 // TODO: check unofficial opcodes for page crosses
 
 impl super::Cpu {
-
     pub fn adc(&mut self, _address: usize, _mode: Mode) {
         let byte = self.read(_address);
-        let carry_bit = if self.P & CARRY_FLAG == 0 {0} else {1};
+        let carry_bit = if self.P & CARRY_FLAG == 0 { 0 } else { 1 };
         let mut new_val = self.A.wrapping_add(byte); // add the byte at the _address to accum
         new_val = new_val.wrapping_add(carry_bit); // add carry flag to accumulator
-        // set carry flag if we wrapped around and added something
+                                                   // set carry flag if we wrapped around and added something
         if new_val <= self.A && (byte != 0 || carry_bit != 0) {
             self.P |= CARRY_FLAG;
         } else {
@@ -41,10 +43,10 @@ impl super::Cpu {
             _ => {
                 self.clock += 2;
                 self.read(_address)
-            },
+            }
         };
         // put top bit in carry flag
-        if val & (1<<7) != 0 {
+        if val & (1 << 7) != 0 {
             self.P |= CARRY_FLAG;
         } else {
             self.P &= 0xFF - CARRY_FLAG;
@@ -164,7 +166,7 @@ impl super::Cpu {
     pub fn cli(&mut self, _address: usize, _mode: Mode) {
         self.P &= 0xFF - INTERRUPT_DISABLE_FLAG;
     }
-    
+
     pub fn clv(&mut self, _address: usize, _mode: Mode) {
         self.P &= 0xFF - OVERFLOW_FLAG;
     }
@@ -293,7 +295,7 @@ impl super::Cpu {
             _ => {
                 self.clock += 2;
                 self.read(_address)
-            },
+            }
         };
         if val & 0x1 == 0x1 {
             self.P |= CARRY_FLAG;
@@ -309,8 +311,7 @@ impl super::Cpu {
         self.set_negative_flag(val);
     }
 
-    pub fn nop(&mut self, _address: usize, _mode: Mode) {
-    }
+    pub fn nop(&mut self, _address: usize, _mode: Mode) {}
 
     pub fn ora(&mut self, _address: usize, _mode: Mode) {
         self.A |= self.read(_address);
@@ -370,18 +371,21 @@ impl super::Cpu {
             _ => {
                 self.clock += 2;
                 self.read(_address)
-            },
+            }
         };
-        let carry_flag_bit = if self.P & CARRY_FLAG != 0 {1} else {0};
-        let new_cfb = if val & 0x80 != 0 {1} else {0};
+        let carry_flag_bit = if self.P & CARRY_FLAG != 0 { 1 } else { 0 };
+        let new_cfb = if val & 0x80 != 0 { 1 } else { 0 };
         val <<= 1;
         val += carry_flag_bit;
         match _mode {
             Mode::ACC => self.A = val,
             _ => self.write(_address, val),
         };
-        if new_cfb != 0 { self.P |= CARRY_FLAG; }
-        else { self.P &= 0xFF - CARRY_FLAG; }
+        if new_cfb != 0 {
+            self.P |= CARRY_FLAG;
+        } else {
+            self.P &= 0xFF - CARRY_FLAG;
+        }
         self.set_zero_flag(val);
         self.set_negative_flag(val);
     }
@@ -394,12 +398,15 @@ impl super::Cpu {
                 self.read(_address)
             }
         };
-        let cfb = if self.P & CARRY_FLAG != 0 {1} else {0};
+        let cfb = if self.P & CARRY_FLAG != 0 { 1 } else { 0 };
         let new_cfb = val & 0x1;
         val >>= 1;
         val += cfb * 0x80;
-        if new_cfb != 0 { self.P |= CARRY_FLAG; }
-        else { self.P &= 0xFF - CARRY_FLAG; }
+        if new_cfb != 0 {
+            self.P |= CARRY_FLAG;
+        } else {
+            self.P &= 0xFF - CARRY_FLAG;
+        }
         match _mode {
             Mode::ACC => self.A = val,
             _ => self.write(_address, val),
@@ -434,7 +441,7 @@ impl super::Cpu {
 
     pub fn sbc(&mut self, _address: usize, _mode: Mode) {
         let byte = self.read(_address);
-        let carry_bit = if self.P & CARRY_FLAG == 0 {1} else {0};
+        let carry_bit = if self.P & CARRY_FLAG == 0 { 1 } else { 0 };
         let mut new_val = self.A.wrapping_sub(byte);
         new_val = new_val.wrapping_sub(carry_bit);
         // if overflow occurs and we subtracted something, CLEAR the carry bit
@@ -553,5 +560,4 @@ impl super::Cpu {
             + (self.read(IRQ_VECTOR) as usize); // and low byte
         self.clock += 7;
     }
-
 }

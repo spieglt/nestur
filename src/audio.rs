@@ -1,14 +1,14 @@
 extern crate sdl2;
 
-use std::sync::{Arc, Mutex};
-use sdl2::Sdl;
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use sdl2::Sdl;
+use std::sync::{Arc, Mutex};
 
 const APU_SAMPLE_RATE: f32 = 894_886.5;
 const SDL_SAMPLE_RATE: i32 = 44_100;
 // Video runs at 60Hz, so console is clocked by doing enough work to create one frame of video, then sending the video and audio to their respective SDL
 // devices and then sleeping. So the audio device is set to play 44,100 samples per second, and grab them in 60 intervals over the course of that second.
-const SAMPLES_PER_FRAME: u16 = SDL_SAMPLE_RATE as u16/60;
+const SAMPLES_PER_FRAME: u16 = SDL_SAMPLE_RATE as u16 / 60;
 
 pub struct ApuSampler {
     // This buffer receives all of the raw audio produced by the APU.
@@ -42,17 +42,21 @@ impl AudioCallback for ApuSampler {
     }
 }
 
-pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>) 
-    -> Result<sdl2::audio::AudioDevice<ApuSampler>, String> 
-{
+pub fn initialize(
+    sdl_context: &Sdl,
+    buffer: Arc<Mutex<Vec<f32>>>,
+) -> Result<sdl2::audio::AudioDevice<ApuSampler>, String> {
     let audio_subsystem = sdl_context.audio()?;
     let desired_spec = AudioSpecDesired {
         freq: Some(SDL_SAMPLE_RATE),
         channels: Some(1), // mono
-        samples: Some(SAMPLES_PER_FRAME)
+        samples: Some(SAMPLES_PER_FRAME),
     };
     audio_subsystem.open_playback(None, &desired_spec, |spec| {
         // println!("{:?}", spec);
-        ApuSampler{buffer, sample_ratio: APU_SAMPLE_RATE / (SDL_SAMPLE_RATE as f32)}
+        ApuSampler {
+            buffer,
+            sample_ratio: APU_SAMPLE_RATE / (SDL_SAMPLE_RATE as f32),
+        }
     })
 }
