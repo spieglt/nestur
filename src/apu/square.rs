@@ -100,7 +100,7 @@ impl Square {
         }
     }
 
-    // Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes. 
+    // Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes.
     pub fn calculate_target_period(&mut self) {
         // The sweep unit continuously calculates each channel's target period in this way:
         // A barrel shifter shifts the channel's 11-bit raw timer period right by the shift count, producing the change amount.

@@ -107,7 +107,7 @@ impl Mapper for Mmc3 {
             },
 
             0x6000..=0x7FFF => self.prg_ram_bank[address % 0x2000], // PRG-RAM
-            
+
             0x8000..=0xFFFF => { // reading from PRG ROM, dealing with 8K banks of 16K chunks
                 let offset_8k = address % 0x2000;
                 let num_banks = self.cart.prg_rom_size * 2;
@@ -118,7 +118,7 @@ impl Mapper for Mmc3 {
                             0xA000..=0xBFFF => self.bank_registers[7],
                             0xC000..=0xDFFF => self.bank_registers[6],
                             0xE000..=0xFFFF => num_banks - 1,
-                            _ => panic!("oh no"),                            
+                            _ => panic!("oh no"),
                         }
                     },
                     false => {
@@ -134,7 +134,7 @@ impl Mapper for Mmc3 {
                 let chunk_num = bank_num / 2;
                 let chunk_half = (bank_num % 2) * 0x2000;
                 self.cart.prg_rom[chunk_num][chunk_half + offset_8k]
-                
+
             },
             _ => {
                 println!("bad address read from MMC3: 0x{:X}", address);

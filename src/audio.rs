@@ -42,8 +42,8 @@ impl AudioCallback for ApuSampler {
     }
 }
 
-pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>) 
-    -> Result<sdl2::audio::AudioDevice<ApuSampler>, String> 
+pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
+    -> Result<sdl2::audio::AudioDevice<ApuSampler>, String>
 {
     let audio_subsystem = sdl_context.audio()?;
     let desired_spec = AudioSpecDesired {

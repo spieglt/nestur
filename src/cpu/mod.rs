@@ -137,7 +137,7 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> u64 {
-        
+
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
             self.delay -= 1;

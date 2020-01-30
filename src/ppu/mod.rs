@@ -31,7 +31,7 @@ pub struct Ppu {
     nametable_C: Vec<u8>,
     nametable_D: Vec<u8>,
 
-    // The palette shared by both background and sprites. 
+    // The palette shared by both background and sprites.
     // Consists of 32 bytes, each of which represents an index into the global PALETTE_TABLE.
     // The first 16 bytes are for the background, the second half for the sprites.
     palette_ram: Vec<u8>, // Palette RAM indexes.
@@ -197,10 +197,10 @@ impl Ppu {
                 _ => (),
             }
         }
-        
+
         // During dots 280 to 304 of the pre-render scanline (end of vblank)
-        // If rendering is enabled, at the end of vblank, shortly after the horizontal bits 
-        // are copied from t to v at dot 257, the PPU will repeatedly copy the vertical bits 
+        // If rendering is enabled, at the end of vblank, shortly after the horizontal bits
+        // are copied from t to v at dot 257, the PPU will repeatedly copy the vertical bits
         // from t to v from dots 280 to 304, completing the full initialization of v from t:
         if rendering && self.scanline == 261 && self.line_cycle >= 280 && self.line_cycle <= 304 {
             self.copy_vertical();

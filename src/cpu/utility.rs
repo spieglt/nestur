@@ -19,7 +19,7 @@ impl super::Cpu {
             Mode::ZPY => 2,
         }
     }
-    
+
     pub fn add_offset_to_pc(&mut self, offset: i8) {
         match offset >= 0 {
             true => {

@@ -25,7 +25,7 @@ pub struct Apu {
     triangle: Triangle,
     noise:    Noise,
     dmc:      DMC,
-    
+
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
 
@@ -234,7 +234,7 @@ impl Apu {
     fn write_frame_counter(&mut self, value: u8) {
         // 0 selects 4-step sequence, 1 selects 5-step sequence
         self.frame_sequence = if value & (1<<7) == 0 { 4 } else { 5 };
-        // If set, the frame interrupt flag is cleared, otherwise it is unaffected. 
+        // If set, the frame interrupt flag is cleared, otherwise it is unaffected.
         if value & (1<<6) != 0 {
             self.interrupt_inhibit = false;
         }

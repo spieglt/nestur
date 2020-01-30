@@ -18,22 +18,22 @@ impl DMC {
     }
 
     pub fn clock(&mut self) {
-        
+       
     }
-    
+   
     pub fn write_control(&mut self, value: u8) {
-        
+       
     }
-    
+   
     pub fn direct_load(&mut self, value: u8) {
-        
+       
     }
-    
+   
     pub fn write_sample_address(&mut self, value: u8) {
-        
+       
     }
-    
+   
     pub fn write_sample_length(&mut self, value: u8) {
-        
+       
     }
 }

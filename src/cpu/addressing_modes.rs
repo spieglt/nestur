@@ -67,7 +67,7 @@ impl super::Cpu {
         let low_byte = self.read(operand_address) as usize;
         // BUG TIME! from https://wiki.nesdev.com/w/index.php/Errata
         // "JMP ($xxyy), or JMP indirect, does not advance pages if the lower eight bits
-        // of the specified address is $FF; the upper eight bits are fetched from $xx00, 
+        // of the specified address is $FF; the upper eight bits are fetched from $xx00,
         // 255 bytes earlier, instead of the expected following byte."
         let high_byte = if operand_address & 0xFF == 0xFF {
             (self.read(operand_address as usize - 0xFF) as usize) << 8

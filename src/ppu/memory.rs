@@ -1,7 +1,7 @@
 use crate::cartridge::Mirror;
 
 impl super::Ppu {
-    
+
     pub fn read(&mut self, addr: usize) -> u8 {
         let address = addr % 0x4000;
         match addr {
@@ -26,7 +26,7 @@ impl super::Ppu {
                 // Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C.
                 // Note that this goes for writing as well as reading.
                 // A symptom of not having implemented this correctly in an emulator is the sky being black in Super Mario Bros.,
-                // which writes the backdrop color through $3F10. 
+                // which writes the backdrop color through $3F10.
                 match address % 0x10 {
                     0x00 => {
                         self.palette_ram[0] = value;

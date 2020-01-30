@@ -164,7 +164,7 @@ impl super::Cpu {
     pub fn cli(&mut self, _address: usize, _mode: Mode) {
         self.P &= 0xFF - INTERRUPT_DISABLE_FLAG;
     }
-    
+
     pub fn clv(&mut self, _address: usize, _mode: Mode) {
         self.P &= 0xFF - OVERFLOW_FLAG;
     }

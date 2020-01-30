@@ -1,5 +1,5 @@
 impl super::Ppu {
-    
+
     // cpu writes to 0x2000, PPUCTRL
     pub fn write_controller(&mut self, byte: u8) {
 
@@ -144,14 +144,14 @@ impl super::Ppu {
         As for 0x3F00 through 0x3FFF, the palette RAM indexes and their mirrors, need to find corresponding nametable?
         There are 4 nametables, duplicated once, so 8. There is one palette RAM index, mirrored 7 times, so 8.
         So to get from the fifth pallete RAM mirror, which would be 0x3F80, you'd select the 5th nametable,
-        which would be the first mirrored nametable, 0x3000? 
+        which would be the first mirrored nametable, 0x3000?
         No, just subtract 0x1000. https://forums.nesdev.com/viewtopic.php?f=3&t=18627:
 
-            "However, I couldn't find any info on exactly which address should be used to populate the read buffer in this scenario. 
+            "However, I couldn't find any info on exactly which address should be used to populate the read buffer in this scenario.
             From other emulators, it appears to be PPU_ADDR - 0x1000, but I can't really intuit why that is the case."
 
-            "It's the case because the majority of the time (that is, on just about every board but GTROM), 
-            video memory $3000-$3FFF mirrors $2000-$2FFF. When PA13 is high ($2000-$3FFF), nothing is listening 
+            "It's the case because the majority of the time (that is, on just about every board but GTROM),
+            video memory $3000-$3FFF mirrors $2000-$2FFF. When PA13 is high ($2000-$3FFF), nothing is listening
             to PA12 (the line that distinguishes $0000-$0FFF from $1000-$1FFF and distinguishes $2000-$2FFF from $3000-$3FFF)."
         */
 

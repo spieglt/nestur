@@ -87,7 +87,7 @@ impl super::Ppu {
         let low_palette_bit = (self.background_palette_sr_low & (1 << (7-self.x)) != 0) as u8;
         let high_palette_bit = (self.background_palette_sr_high & (1 << (7-self.x)) != 0) as u8;
         let palette_offset = (high_palette_bit << 1) | low_palette_bit;
-        
+
         if x < 8 && !self.show_background_left {
             background_pixel = 0;
         }
@@ -118,7 +118,7 @@ impl super::Ppu {
         // let pixel = self.read(palette_address as usize) as usize;
         let pixel = self.palette_ram[palette_address as usize] as usize;
         let color: (u8, u8, u8) = super::PALETTE_TABLE[pixel];
-        
+
         (x,y,color)
     }
 
@@ -175,7 +175,7 @@ impl super::Ppu {
         }
     }
 
-    pub fn evaluate_sprites(&mut self) {        
+    pub fn evaluate_sprites(&mut self) {
         let mut sprite_count = 0;
         for n in 0..64 {
             let y_coord = self.primary_oam[(n*4)+0];
@@ -214,7 +214,7 @@ impl super::Ppu {
                 } else {
                     self.sprite_size as usize - 1 - (self.scanline - sprite_y_position)
                 };
-            // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number. 
+            // For 8x16 sprites, the PPU ignores the pattern table selection and selects a pattern table from bit 0 of this number.
             } else {
                 address = if sprite_tile_index & 1 == 0 { 0x0 } else { 0x1000 };
                 address += (sprite_tile_index & 0xFFFF-1) << 4; // turn off bottom bit BEFORE shifting
@@ -264,8 +264,8 @@ impl super::Ppu {
     }
 
     pub fn inc_y(&mut self) {
-        // If rendering is enabled, fine Y is incremented at dot 256 of each scanline, 
-        // overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically. 
+        // If rendering is enabled, fine Y is incremented at dot 256 of each scanline,
+        // overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically.
         let mut fine_y   = (self.v & 0b01110000_00000000) >> 12;
         let mut coarse_y = (self.v & 0b00000011_11100000) >> 5;
         if fine_y < 7 {
@@ -273,7 +273,7 @@ impl super::Ppu {
         } else {
             fine_y = 0;
             // Row 29 is the last row of tiles in a nametable. To wrap to the next nametable when
-            // incrementing coarse Y from 29, the vertical nametable is switched by toggling bit 
+            // incrementing coarse Y from 29, the vertical nametable is switched by toggling bit
             // 11, and coarse Y wraps to row 0.
             if coarse_y == 29 {
                 self.v ^= 1<<11;
@@ -320,7 +320,7 @@ impl super::Ppu {
     }
 
     pub fn y_in_range(&self, y_coord: u8) -> bool {
-        self.scanline >= (y_coord as usize) && 
+        self.scanline >= (y_coord as usize) &&
             self.scanline - (y_coord as usize) < self.sprite_size as usize
     }
 
