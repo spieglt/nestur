@@ -88,6 +88,8 @@ pub struct Ppu {
 
     read_buffer:                   u8,   // used with PPUDATA register
     pub recent_bits:               u8,   // Least significant bits previously written into a PPU register
+
+    previous_a12:                  u8,
 }
 
 impl Ppu {
@@ -144,6 +146,7 @@ impl Ppu {
             nmi_delay:                     0,
             read_buffer:                   0,
             recent_bits:                   0,
+            previous_a12:                  0,
         }
     }
 
@@ -243,29 +246,17 @@ impl Ppu {
         }
 
         // deal with mapper MMC3
-        // if self.rendering()
-        // && (1..241).contains(&self.scanline)
-        // && (
-        //     (
-        //         self.line_cycle == 260
-        //         && self.sprite_size == 8
-        //         && self.background_pattern_table_base == 0x0000
-        //         && self.sprite_pattern_table_base == 0x1000
-        //     ) || (
-        //         self.line_cycle == 324
-        //         && self.sprite_size == 8
-        //         && self.background_pattern_table_base == 0x1000
-        //         && self.sprite_pattern_table_base == 0x0000
-        //     ) || (
-        //         self.line_cycle == 260
-        //         && self.sprite_size == 16
-        //         // TODO: figure out exact conditions here
-        //     )
-        // )
-        if self.rendering() && self.line_cycle == 260 && (1..241).contains(&self.scanline)
+        let current_a12 = if self.v & 1 << 12 != 0 { 1 } else { 0 };
+        if rendering
+            && (0..241).contains(&self.scanline)
+            // && (current_a12 == 1 && self.previous_a12 == 0)
+            && current_a12 != self.previous_a12
         {
+            // println!("clocking");
             self.mapper.borrow_mut().clock()
         }
+        // println!("current: {}, previous: {}", current_a12, self.previous_a12);
+        self.previous_a12 = current_a12;
 
         (pixel, end_of_frame)
     }

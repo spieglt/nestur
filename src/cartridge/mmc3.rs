@@ -12,6 +12,7 @@ pub struct Mmc3 {
     irq_enable: bool,
     trigger_irq: bool, // signal to send to CPU
     reload_counter: bool,
+    irq_delay: u8,
 
     prg_ram_bank: Vec<u8>, // CPU $6000-$7FFF
     // 0: $8000-$9FFF swappable, $C000-$DFFF fixed to second-last bank
@@ -37,6 +38,7 @@ impl Mmc3 {
             irq_enable: false,
             trigger_irq: false,
             reload_counter: false,
+            irq_delay: 0,
             prg_ram_bank: vec![0; 0x2000],
             prg_rom_bank_mode: false,
             chr_rom_bank_mode: false,
@@ -206,11 +208,22 @@ impl Mapper for Mmc3 {
     }
 
     fn check_irq(&mut self) -> bool {
+        // if self.trigger_irq {
+        //     self.trigger_irq = false;
+        //     true
+        // } else {
+        //     false
+        // }
         if self.trigger_irq {
             self.trigger_irq = false;
-            true
-        } else {
-            false
+            self.irq_delay = 15;
         }
+        if self.irq_delay > 0 {
+            self.irq_delay -= 1;
+            if self.irq_delay == 0 {
+                return true;
+            }
+        }
+        false
     }
 }

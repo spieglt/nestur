@@ -142,4 +142,12 @@ Failed tests from instr_test-v5/rom_singles/:
     CB AXS #n
 7, abs_xy, 'illegal opcode using abs x: 9c'
 
+
+
+
+
+
+1. A12 stuff controls when IRQs 
+2. Don't think the timing stuff is related to the palette and background table issues in SMB3
+
 */
