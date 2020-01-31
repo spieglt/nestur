@@ -6,7 +6,7 @@ Nestur is an NES emulator. There are plenty of full-featured emulators out there
 - NTSC timing
 - supports mappers 0-4 which cover ~85% of [games](http://tuxnes.sourceforge.net/nesmapper.txt)
 
-<img src="pics/smb.png" width=250> <img src="pics/zelda_dungeon.png" width=250> <img src="pics/kirby.png" width=250> <img src="pics/metroid.png" width=250> <img src="pics/smb3.png" width=250> <img src="pics/contra.png" width=250>
+<img src="pics/smb.png" width=250> <img src="pics/zelda_dungeon.png" width=250> <img src="pics/kirby.png" width=250> <img src="pics/dk.png" width=250> <img src="pics/smb3.png" width=250> <img src="pics/excitebike.png" width=250>
 
 ## Controls
 ```
