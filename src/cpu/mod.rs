@@ -158,6 +158,8 @@ impl Cpu {
         if self.mapper.borrow_mut().check_irq() && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
             self.irq();
         }
+        // TODO: should checks for APU and MMC3 IRQs be combined and acknowledged together?
+
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;

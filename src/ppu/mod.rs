@@ -249,13 +249,10 @@ impl Ppu {
         let current_a12 = if self.v & 1 << 12 != 0 { 1 } else { 0 };
         if rendering
             && (0..241).contains(&self.scanline)
-            // && (current_a12 == 1 && self.previous_a12 == 0)
             && current_a12 != self.previous_a12
         {
-            // println!("clocking");
             self.mapper.borrow_mut().clock()
         }
-        // println!("current: {}, previous: {}", current_a12, self.previous_a12);
         self.previous_a12 = current_a12;
 
         (pixel, end_of_frame)

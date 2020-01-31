@@ -2,9 +2,8 @@ use crate::cartridge::Mirror;
 
 impl super::Ppu {
 
-    pub fn read(&mut self, addr: usize) -> u8 {
-        let address = addr % 0x4000;
-        match addr {
+    pub fn read(&mut self, address: usize) -> u8 {
+        match address {
             0x0000..=0x1FFF => self.mapper.borrow_mut().read(address),
             0x2000..=0x3EFF => self.read_nametable(address),
             0x3F00..=0x3FFF => {
@@ -16,9 +15,9 @@ impl super::Ppu {
         }
     }
 
-    pub fn write(&mut self, addr: usize, value: u8) {
-        let address = addr % 0x4000;
-        match addr {
+    pub fn write(&mut self, address: usize, value: u8) {
+        // let address = addr % 0x4000;
+        match address {
             0x0000..=0x1FFF => self.mapper.borrow_mut().write(address, value),
             0x2000..=0x3EFF => self.write_nametable(address, value),
             0x3F00..=0x3FFF => {

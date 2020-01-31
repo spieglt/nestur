@@ -51,8 +51,8 @@ pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
         channels: Some(1), // mono
         samples: Some(SAMPLES_PER_FRAME)
     };
-    audio_subsystem.open_playback(None, &desired_spec, |spec| {
-        // println!("{:?}", spec);
+    audio_subsystem.open_playback(None, &desired_spec, |_spec| {
+        // println!("{:?}", _spec);
         ApuSampler{buffer, sample_ratio: APU_SAMPLE_RATE / (SDL_SAMPLE_RATE as f32)}
     })
 }

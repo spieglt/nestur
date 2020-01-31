@@ -110,7 +110,9 @@ impl super::Ppu {
                 set_bit(&mut self.t, 0xC, d, 0x4);
                 set_bit(&mut self.t, 0xD, d, 0x5);
                 // t: X...... ........ = 0
-                set_bit(&mut self.t, 0xF, 0, 0);
+                set_bit(&mut self.t, 0xE, 0, 0);
+                // setting the 16th instead of the 15th bit in the line above was the longest, most frustrating oversight.
+                // caused weird problems with vertical scrolling and backgrounds that I initially thought were bugs with MMC3.
                 self.w = 1;
             },
             1 => { // second write
@@ -169,7 +171,6 @@ impl super::Ppu {
             },
             _ => panic!("reading from invalid PPU address: 0x{:04x}", self.v),
         };
-
         if self.rendering() && (self.scanline < 240 || self.scanline == 261) {
             // During rendering (on the pre-render line and the visible lines 0-239, provided either background or sprite rendering is enabled),
             // it will update v in an odd way, triggering a coarse X increment and a Y increment simultaneously (with normal wrapping behavior).

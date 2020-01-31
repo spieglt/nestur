@@ -118,7 +118,6 @@ fn main() -> Result<(), String> {
 /*
 
 TODO:
-- fix MMC3
 - high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
@@ -142,13 +141,4 @@ Failed tests from instr_test-v5/rom_singles/:
     CB AXS #n
 7, abs_xy, 'illegal opcode using abs x: 9c'
 
-
-
-
-
-
-1. A12 stuff controls when IRQs fire. Don't think there are serious problems with when IRQs fire anymore,
-though vertical scroll is still shaky in Kirby.
-2. Don't think the timing stuff is related to the palette and background table issues in SMB2/3.
-How can the palette be wrong? Or is it not, but the attribute bits are reading wrong?
 */

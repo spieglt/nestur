@@ -158,7 +158,7 @@ impl Mapper for Mmc3 {
                     0x8000..=0x9FFF => self.bank_select(value),
                     0xA000..=0xBFFF => self.mirroring = if value & 1 == 0 {Mirror::Vertical} else {Mirror::Horizontal},
                     0xC000..=0xDFFF => self.irq_latch = value,
-                    0xE000..=0xFFFF => self.irq_enable = false,
+                    0xE000..=0xFFFF => {self.irq_enable = false; self.trigger_irq = false}, // Writing any value to this register will disable MMC3 interrupts AND acknowledge any pending interrupts.
                     _ => println!("bad address written to MMC3: 0x{:X}", address),
                 }
             },
@@ -186,19 +186,16 @@ impl Mapper for Mmc3 {
     fn load_battery_backed_ram(&mut self) {}
     fn save_battery_backed_ram(&self) {}
 
+    // This function is called by the PPU when the A12 address line changes.
+    // It's supposed to only be called when A12 goes from 0 to 1, but that doesn't work
+    // for my emulator for some reason.
     fn clock(&mut self) {
         if self.reload_counter {
             self.irq_counter = self.irq_latch;
             self.reload_counter = false;
         }
-        // "Should reload and set IRQ every clock when reload is 0."
-        if self.irq_latch == 0 && self.irq_enable {
-            self.irq_counter = self.irq_latch;
-            self.trigger_irq = true;
-        }
         if self.irq_counter == 0 {
             self.irq_counter = self.irq_latch;
-            return;
         } else {
             self.irq_counter -= 1;
         }
@@ -207,16 +204,15 @@ impl Mapper for Mmc3 {
         }
     }
 
+    // This function is called by the CPU every step (which takes more than one CPU clock cycle).
+    // I think I'm supposed to be tracking IRQ delays by the PPU, not letting an IRQ fire if
+    // there was one within the last 15 PPU cycles, but that didn't work and this does.
     fn check_irq(&mut self) -> bool {
-        // if self.trigger_irq {
-        //     self.trigger_irq = false;
-        //     true
-        // } else {
-        //     false
-        // }
         if self.trigger_irq {
             self.trigger_irq = false;
-            self.irq_delay = 15;
+            if self.irq_delay == 0 {
+                self.irq_delay = 5;
+            }
         }
         if self.irq_delay > 0 {
             self.irq_delay -= 1;
