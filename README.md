@@ -6,9 +6,9 @@ Nestur is an NES emulator. There are plenty of full-featured emulators out there
 - NTSC timing
 - supports mappers 0-4 which cover ~85% of [games](http://tuxnes.sourceforge.net/nesmapper.txt)
 
-<img src="pics/smb.png" width=300> <img src="pics/zelda_dungeon.png" width=300> <img src="pics/kirby.png" width=300> <img src="pics/metroid.png" width=300> <img src="pics/smb3.png" width=300> <img src="pics/contra.png" width=300>
+<img src="pics/smb.png" width=250> <img src="pics/zelda_dungeon.png" width=250> <img src="pics/kirby.png" width=250> <img src="pics/metroid.png" width=250> <img src="pics/smb3.png" width=250> <img src="pics/contra.png" width=250>
 
-## Controls:
+## Controls
 ```
  Button  |   Key
 ___________________
@@ -36,7 +36,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 5. Run with `$ ./nestur path/to/rom_filename.nes` or `> nestur.exe path\to\rom_filename.nes`.
 6. If the game uses battery-backed RAM (if it can save data when turned off), a save file like `rom_filename.sav` will be created in the same folder as the ROM when the program is exited. When Nestur is run again, it will look for a file matching the ROM name, with a `.sav` extension instead of `.nes`.
 
-## To do:
+## To do
 
 - DMC audio channel, high- and low-pass filters
 
