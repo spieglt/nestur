@@ -219,7 +219,7 @@ impl Cpu {
         } else {
             self.button_number += 1;
         }
-        bit
+        bit | 0x40
     }
 
     fn write_controller(&mut self, val: u8) {

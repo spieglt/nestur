@@ -28,7 +28,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 1. Install [Rust](https://www.rust-lang.org/tools/install)
 2. Configure SDL2 for your platform:
-    - Windows: `SDL2.dll` is already in the repo so you don't have to do anything
+    - Windows: `SDL2.dll` is already in the repo, though you do need the MSVC toolchain to use it. Have [Visual Studio](https://docs.microsoft.com/en-us/cpp/build/vscpp-step-0-installation?view=vs-2019) installed including the "Desktop development with C++" workload. Then make sure Rust is using that toolchain by running `rustup default stable-x86_64-pc-windows-msvc`.
     - macOS: Install [Homebrew](https://brew.sh/) and run `brew install sdl2`
     - Linux: `sudo apt-get install libsdl2-dev` (or whatever your package manager is)
 3. `cd nestur/ && cargo build --release` (be sure to build/run with the release flag or it will run very slowly)
@@ -48,7 +48,7 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 
 ## Known problem games
 
-- Paperboy: input doesn't work
+- None currently, please report any issues
 
 
 Please also check out [Cloaker](https://github.com/spieglt/cloaker) and [Flying Carpet](https://github.com/spieglt/flyingcarpet)!
