@@ -4,7 +4,7 @@ impl super::Ppu {
 
     pub fn read(&mut self, address: usize) -> u8 {
         match address {
-            0x0000..=0x1FFF => self.mapper.borrow_mut().read(address),
+            0x0000..=0x1FFF => self.mapper.borrow().read(address),
             0x2000..=0x3EFF => self.read_nametable(address),
             0x3F00..=0x3FFF => {
                 let a = address % 0x0020;

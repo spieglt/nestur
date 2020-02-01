@@ -15,7 +15,7 @@ use std::rc::Rc;
 use std::io::Read;
 
 pub trait Mapper {
-    fn read(&mut self, address: usize) -> u8;
+    fn read(&self, address: usize) -> u8;
     fn write(&mut self, address: usize, value: u8);
     fn get_mirroring(&mut self) -> Mirror;
     fn load_battery_backed_ram(&mut self);

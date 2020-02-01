@@ -111,7 +111,7 @@ impl Mmc1 {
 }
 
 impl Mapper for Mmc1 {
-    fn read(&mut self, address: usize) -> u8 {
+    fn read(&self, address: usize) -> u8 {
         match address {
             0x0000..=0x1FFF => {
                 if self.cart.chr_rom_size == 0 {

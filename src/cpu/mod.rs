@@ -189,7 +189,7 @@ impl Cpu {
             0x4016          => self.read_controller(),
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => self.mapper.borrow_mut().read(address),
+            0x4020..=0xFFFF => self.mapper.borrow().read(address),
             _ => panic!("invalid read from 0x{:02x}", address),
         };
         val

@@ -15,7 +15,7 @@ impl Nrom {
 }
 
 impl Mapper for Nrom {
-    fn read(&mut self, address: usize) -> u8 {
+    fn read(&self, address: usize) -> u8 {
         let addr = address % 0x4000;
         match address {
             0x0000..=0x1FFF => {

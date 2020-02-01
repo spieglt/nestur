@@ -67,7 +67,7 @@ impl Mmc3 {
 }
 
 impl Mapper for Mmc3 {
-    fn read(&mut self, address: usize) -> u8 {
+    fn read(&self, address: usize) -> u8 {
         let val = match address {
             0x0000..=0x1FFF => { // reading from CHR-ROM
                 let offset_1k = address % 0x400;

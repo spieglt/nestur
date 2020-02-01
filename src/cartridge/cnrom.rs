@@ -15,7 +15,7 @@ impl Cnrom {
 }
 
 impl Mapper for Cnrom {
-    fn read(&mut self, address: usize) -> u8 {
+    fn read(&self, address: usize) -> u8 {
         let pl = self.cart.prg_rom.len();
         let addr = address % 0x4000;
         match address {
