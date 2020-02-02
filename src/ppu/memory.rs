@@ -53,7 +53,7 @@ impl super::Ppu {
     fn read_nametable(&mut self, address: usize) -> u8 {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        match self.mapper.borrow_mut().get_mirroring() {
+        match self.mapper.borrow().get_mirroring() {
             Mirror::LowBank => self.nametable_A[offset],
             Mirror::HighBank => self.nametable_B[offset],
             Mirror::Horizontal => {
@@ -85,7 +85,7 @@ impl super::Ppu {
     fn write_nametable(&mut self, address: usize, value: u8) {
         let base = address % 0x1000;
         let offset = base % 0x0400;
-        match self.mapper.borrow_mut().get_mirroring() {
+        match self.mapper.borrow().get_mirroring() {
             Mirror::LowBank => self.nametable_A[offset] = value,
             Mirror::HighBank => self.nametable_B[offset] = value,
             Mirror::Horizontal => {

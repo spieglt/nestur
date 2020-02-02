@@ -33,7 +33,7 @@ impl Mapper for Cnrom {
         }
     }
 
-    fn get_mirroring(&mut self) -> Mirror {
+    fn get_mirroring(&self) -> Mirror {
         self.cart.mirroring
     }
 

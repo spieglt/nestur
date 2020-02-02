@@ -44,7 +44,7 @@ impl Mapper for Uxrom {
         }
     }
 
-    fn get_mirroring(&mut self) -> Mirror {
+    fn get_mirroring(&self) -> Mirror {
         self.cart.mirroring
     }
 
