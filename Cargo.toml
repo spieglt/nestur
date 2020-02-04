@@ -5,7 +5,7 @@ authors = ["Theron <tspiegl@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-sdl2 = { version = "0.32", features = ["bundled", "static-link"] }
+sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
 cpuprofiler = "0.0.3"
 
 [profile.release]
