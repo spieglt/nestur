@@ -49,7 +49,7 @@ impl Mapper for Nrom {
         }
     }
 
-    fn get_mirroring(&mut self) -> Mirror {
+    fn get_mirroring(&self) -> Mirror {
         self.cart.mirroring
     }
 

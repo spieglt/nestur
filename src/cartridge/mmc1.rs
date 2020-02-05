@@ -175,7 +175,7 @@ impl Mapper for Mmc1 {
         }
     }
 
-    fn get_mirroring(&mut self) -> Mirror {
+    fn get_mirroring(&self) -> Mirror {
         self.mirroring
     }
 

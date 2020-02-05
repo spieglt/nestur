@@ -175,7 +175,7 @@ impl Mapper for Mmc3 {
         }
     }
 
-    fn get_mirroring(&mut self) -> Mirror {
+    fn get_mirroring(&self) -> Mirror {
         if self.cart.four_screen_vram {
             Mirror::FourScreen
         } else {
