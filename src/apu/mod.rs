@@ -3,6 +3,7 @@ mod square;
 mod triangle;
 mod dmc;
 mod envelope;
+pub mod serialize;
 
 use noise::Noise;
 use square::Square;
@@ -19,6 +20,7 @@ const LENGTH_COUNTER_TABLE: [u8; 32] = [
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Apu {
     square1:  Square,
     square2:  Square,

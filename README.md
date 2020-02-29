@@ -21,6 +21,9 @@ ___________________
 |  Left  |  Left  |
 |  Right |  Right |
 -------------------
+Save state: F5
+Load state: F9
+(Only one save state at a time supported currently: saving a second time overwrites the first.)
 ```
 The code aims to follow the explanations from the [NES dev wiki](https://wiki.nesdev.com/w/index.php/NES_reference_guide) where possible, especially in the PPU, and the comments quote from it often. Thanks to everyone who contributes to that wiki/forum, and to Michael Fogleman's [NES](https://github.com/fogleman/nes) and Scott Ferguson's [Fergulator](https://github.com/scottferg/Fergulator) for getting me unstuck at several points.
 

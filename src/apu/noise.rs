@@ -4,6 +4,7 @@ const NOISE_TABLE: [u16; 16] = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 5
 
 // $400E 	M---.PPPP 	Mode and period (write)
 // bit 7 	M--- ---- 	Mode flag
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Noise {
     pub sample: u16, // output value that gets sent to the mixer
     pub enabled: bool,

@@ -1,11 +1,11 @@
 mod addressing_modes;
 mod opcodes;
 mod utility;
+pub mod serialize;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use serde::{Serialize, Deserialize};
-use serde::ser::{Serializer, SerializeStruct};
 use crate::cartridge::Mapper;
 
 // RAM locations
@@ -53,7 +53,6 @@ impl Mode {
     }
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
 pub struct Cpu {
     mem: Vec<u8>, // CPU's RAM, $0000-$1FFF
     A: u8,        // accumulator
@@ -66,7 +65,6 @@ pub struct Cpu {
     clock: u64, // number of ticks in current cycle
     delay: usize, // for skipping cycles during OAM DMA
 
-    // #[serde(skip_serializing)]
     mapper: Rc<RefCell<dyn Mapper>>, // cartridge data
     pub ppu: super::Ppu,
     pub apu: super::Apu,
@@ -285,30 +283,6 @@ impl Cpu {
             ret.push(self.read(address+i));
         }
         ret
-    }
-}
-
-
-impl Serialize for Cpu {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Cpu", 13)?;
-        state.serialize_field("mem", &self.mem)?;
-        state.serialize_field("A", &self.A)?;
-        state.serialize_field("X", &self.X)?;
-        state.serialize_field("Y", &self.Y)?;
-        state.serialize_field("PC", &self.PC)?;
-        state.serialize_field("S", &self.S)?;
-        state.serialize_field("P", &self.P)?;
-        state.serialize_field("clock", &self.clock)?;
-        state.serialize_field("delay", &self.delay)?;
-        state.serialize_field("strobe", &self.strobe)?;
-        state.serialize_field("button_states", &self.button_states)?;
-        state.serialize_field("button_number", &self.button_number)?;
-        state.serialize_field("mode_table", &self.mode_table)?;
-        state.end()
     }
 }
 

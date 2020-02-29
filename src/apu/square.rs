@@ -7,6 +7,7 @@ const DUTY_CYCLE_SEQUENCES: [[u8; 8]; 4] = [
     [1, 0, 0, 1, 1, 1, 1, 1],
 ];
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Square {
     pub sample: u16, // output value that gets sent to the mixer
     pub enabled: bool,

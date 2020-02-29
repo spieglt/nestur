@@ -33,8 +33,8 @@ pub enum Mirror {
     FourScreen,
 }
 
-pub fn get_mapper() -> Rc<RefCell<dyn Mapper>> {
-    let cart = Cartridge::new();
+pub fn get_mapper(filename: String) -> Rc<RefCell<dyn Mapper>> {
+    let cart = Cartridge::new(filename);
     let num = cart.mapper_num;
     match num {
         0 => Rc::new(RefCell::new(Nrom::new(cart))),
@@ -64,11 +64,8 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new() -> Self {
-        let argv: Vec<String> = std::env::args().collect();
-        assert!(argv.len() > 1, "must include .nes ROM as argument");
-        let filename = &argv[1];
-        let mut f = std::fs::File::open(filename).expect("could not open {}");
+    pub fn new(filename: String) -> Self {
+        let mut f = std::fs::File::open(&filename).expect("could not open {}");
         let mut data = vec![];
         f.read_to_end(&mut data).unwrap();
         assert!(data[0..4] == [0x4E, 0x45, 0x53, 0x1A], "signature mismatch, not an iNES file");

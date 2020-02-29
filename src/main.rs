@@ -5,6 +5,7 @@ mod cartridge;
 mod input;
 mod screen;
 mod audio;
+mod state;
 
 use cpu::Cpu;
 use ppu::Ppu;
@@ -12,6 +13,7 @@ use apu::Apu;
 use cartridge::get_mapper;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
+use state::{save_state, load_state};
 
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
@@ -42,7 +44,8 @@ fn main() -> Result<(), String> {
     audio_device.resume();
 
     // Initialize hardware components
-    let mapper = get_mapper();
+    let filename = get_filename();
+    let mapper = get_mapper(filename.clone());
     let ppu = Ppu::new(mapper.clone());
     let apu = Apu::new();
     let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
@@ -92,6 +95,16 @@ fn main() -> Result<(), String> {
                     match event {
                         Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
                             => break 'running,
+                        Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
+                            let res: Result<(), String> = save_state(&cpu, &filename)
+                                .or_else(|e| {println!("{}", e); Ok(())});
+                            res.unwrap();
+                        },
+                        Event::KeyDown{ keycode: Some(Keycode::F9), .. } => {
+                            let res: Result<(), String> = load_state(&mut cpu, &filename)
+                                .or_else(|e| {println!("{}", e); Ok(())});
+                            res.unwrap();
+                        },
                         _ => (),
                     }
                 }
@@ -115,6 +128,12 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+fn get_filename() -> String {
+    let argv: Vec<String> = std::env::args().collect();
+    assert!(argv.len() > 1, "must include .nes ROM as argument");
+    argv[1].clone()
+}
+
 /*
 
 TODO:
@@ -123,7 +142,7 @@ TODO:
 - untangle CPU and APU/PPU?
 - GUI? drag and drop ROMs?
 - reset function
-- save/load/pause functionality
+- save states: multiple, search/select, and generalized "find file by different extension" functionality
 
 
 Timing notes:

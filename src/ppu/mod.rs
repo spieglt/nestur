@@ -1,6 +1,7 @@
 mod cpu_registers;
 mod rendering;
 mod memory;
+pub mod serialize;
 
 use std::cell::RefCell;
 use std::rc::Rc;

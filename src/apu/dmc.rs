@@ -1,3 +1,4 @@
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct DMC {
     pub sample: u16,
     pub enabled: bool,

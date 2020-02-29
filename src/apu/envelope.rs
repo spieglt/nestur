@@ -1,3 +1,4 @@
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Envelope {
     pub period: u16, // constant volume/envelope period
     divider: u16,
