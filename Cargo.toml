@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 sdl2 = { version = "0.33", features = ["bundled", "static-link"] }
+serde = { version = "1.0.104", features = ["derive"] }
 cpuprofiler = "0.0.3"
 
 [profile.release]
