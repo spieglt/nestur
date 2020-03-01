@@ -1,7 +1,6 @@
 # nestur
 
 Nestur is an NES emulator. There are plenty of full-featured emulators out there; this is primarily an educational project but it is usable. There may still be many bugs, but I'm probably not aware of them so please submit issues.
-- SDL2 is the only dependency
 - no use of `unsafe`
 - NTSC timing
 - supports mappers 0-4 which cover ~85% of [games](http://tuxnes.sourceforge.net/nesmapper.txt)
