@@ -10,7 +10,7 @@ mod state;
 use cpu::Cpu;
 use ppu::Ppu;
 use apu::Apu;
-use cartridge::get_mapper;
+use cartridge::{check_signature, get_mapper};
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
 use state::{save_state, load_state, find_next_filename, find_last_filename};
@@ -203,8 +203,12 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
                     let res: Result<(), String> = load_state(cpu, &p)
                         .or_else(|e| {println!("{}", e); Ok(())});
                     res.unwrap();
-                } else if f.len() > 4 && &f[f.len()-4..] == ".nes" {
-                    return GameExitMode::NewGame(f)
+                // } else if f.len() > 4 && &f[f.len()-4..] == ".nes" {
+                } else {
+                    match cartridge::check_signature(&f) {
+                        Ok(()) => return GameExitMode::NewGame(f),
+                        Err(e) => println!("{}", e),
+                    }
                 }
             },
             _ => (),

@@ -11,8 +11,11 @@ use cnrom::Cnrom;
 use mmc3::Mmc3;
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
 use std::io::Read;
+use std::rc::Rc;
 
 pub trait Mapper {
     fn read(&self, address: usize) -> u8;
@@ -106,6 +109,17 @@ impl Cartridge {
         self.all_data.clear();
     }
 
+}
+
+pub fn check_signature(filename: &str) -> Result<(), String> {
+    let mut f = File::open(filename).map_err(|e| e.to_string())?;
+    let mut data = [0; 4];
+    f.read_exact(&mut data).map_err(|e| e.to_string())?;
+    if data == [0x4E, 0x45, 0x53, 0x1A] {
+        Ok(())
+    } else {
+        Err("file signature mismatch: not a valid iNES file".to_string())
+    }
 }
 
 /*
