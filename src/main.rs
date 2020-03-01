@@ -18,10 +18,15 @@ use state::{save_state, load_state, find_next_filename, find_last_filename};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
+
+use sdl2::Sdl;
+use sdl2::render::{Canvas, Texture};
 use sdl2::keyboard::Keycode;
 use sdl2::EventPump;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
+use sdl2::video::Window;
+use sdl2::messagebox::*;
 
 // use cpuprofiler::PROFILER;
 
@@ -37,18 +42,48 @@ fn main() -> Result<(), String> {
     let byte_height = 240 * screen::SCALE_FACTOR; // NES image is 240 pixels tall, multiply by scale factor for total number of rows needed
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
+    let argv = std::env::args().collect::<Vec<String>>();
+    let filename = if argv.len() > 1 {
+        argv[1].to_string()
+    } else {
+        show_simple_message_box(MessageBoxFlag::OK, title: &str, message: &str, window: W)
+        let name;
+        'waiting: loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::DropFile{ filename: f, .. } => {
+                        name = f;
+                        break 'waiting;
+                    },
+                    _ => std::thread::sleep(Duration::from_millis(500)),
+                }
+            }
+        }
+        name
+    };
+    run_game(&sdl_context, &mut event_pump, &mut screen_buffer, &mut canvas, &mut texture, &filename)
+}
+
+fn run_game(
+        sdl_context: &Sdl,
+        event_pump: &mut EventPump,
+        screen_buffer: &mut Vec<u8>,
+        canvas: &mut Canvas<Window>,
+        texture: &mut Texture,
+        filename: &str
+    ) -> Result<(), String> {
+
     // Set up audio
     let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
     let apu_buffer = Arc::new(Mutex::new(Vec::<f32>::new())); // stays in this thread, receives raw samples between frames
     let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
-    let audio_device = audio::initialize(&sdl_context, sdl_buffer).expect("Could not create audio device");
+    let audio_device = audio::initialize(sdl_context, sdl_buffer).expect("Could not create audio device");
     let mut half_cycle = false;
     audio_device.resume();
 
     // Initialize hardware components
-    let filename = get_filename();
-    let filepath = Path::new(&filename).to_path_buf();
-    let mapper = get_mapper(filename.clone());
+    let filepath = Path::new(filename).to_path_buf();
+    let mapper = get_mapper(filename.to_string());
     let ppu = Ppu::new(mapper.clone());
     let apu = Apu::new();
     let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
@@ -79,12 +114,12 @@ fn main() -> Result<(), String> {
         for _ in 0..cpu_cycles * 3 {
             let (pixel, end_of_frame) = cpu.ppu.clock();
             match pixel {
-                Some((x, y, color)) => draw_pixel(&mut screen_buffer, x, y, color),
+                Some((x, y, color)) => draw_pixel(screen_buffer, x, y, color),
                 None => (),
             };
             if end_of_frame {
                 fps += 1; // keep track of how many frames we've rendered this second
-                draw_to_window(&mut texture, &mut canvas, &screen_buffer)?; // draw the buffer to the window with SDL
+                draw_to_window(texture, canvas, &screen_buffer)?; // draw the buffer to the window with SDL
                 let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
                 b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
                 let now = Instant::now();
@@ -93,7 +128,7 @@ fn main() -> Result<(), String> {
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();
-                if !process_events(&mut event_pump, &filepath, &mut cpu) {
+                if !process_events(event_pump, &filepath, &mut cpu) {
                     break 'running;
                 }
             }
@@ -162,7 +197,7 @@ TODO:
 - high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
-- GUI? drag and drop ROMs?
+- GUI: load new game if .nes dropped, instructions on screen if no arg given, error messages if wrong file dropped.
 - reset function/button
 
 

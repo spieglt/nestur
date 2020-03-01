@@ -7,6 +7,8 @@ Nestur is an NES emulator. There are plenty of full-featured emulators out there
 
 <img src="pics/smb.png" width=250> <img src="pics/zelda_dungeon.png" width=250> <img src="pics/kirby.png" width=250> <img src="pics/dk.png" width=250> <img src="pics/smb3.png" width=250> <img src="pics/excitebike.png" width=250>
 
+The code aims to follow the explanations from the [NES dev wiki](https://wiki.nesdev.com/w/index.php/NES_reference_guide) where possible, especially in the PPU, and the comments quote from it often. Thanks to everyone who contributes to that wiki/forum, and to Michael Fogleman's [NES](https://github.com/fogleman/nes) and Scott Ferguson's [Fergulator](https://github.com/scottferg/Fergulator) for getting me unstuck at several points.
+
 ## Controls
 ```
  Button  |   Key
@@ -24,8 +26,6 @@ ___________________
 
 ## Save states
 To save the state of the game at any time, press F5. To load the most recent save state, press F9. If the game is called `mygame.nes`, the save state files will be called `mygame-X.dat` where `X` is a number. To load any previous save state, drag and drop a `.dat` file onto the window.
-
-The code aims to follow the explanations from the [NES dev wiki](https://wiki.nesdev.com/w/index.php/NES_reference_guide) where possible, especially in the PPU, and the comments quote from it often. Thanks to everyone who contributes to that wiki/forum, and to Michael Fogleman's [NES](https://github.com/fogleman/nes) and Scott Ferguson's [Fergulator](https://github.com/scottferg/Fergulator) for getting me unstuck at several points.
 
 ## Compilation and use
 
