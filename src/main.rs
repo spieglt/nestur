@@ -30,6 +30,12 @@ use sdl2::messagebox::*;
 
 // use cpuprofiler::PROFILER;
 
+enum GameExitMode {
+    QuitApplication,
+    NewGame(String),
+    Neither,
+}
+
 fn main() -> Result<(), String> {
     // Set up screen
     let sdl_context = sdl2::init()?;
@@ -179,10 +185,14 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
                 }
             },
             Event::DropFile{ timestamp: _t, window_id: _w, filename: f } => {
-                let p = Path::new(&f).to_path_buf();
-                let res: Result<(), String> = load_state(cpu, &p)
-                    .or_else(|e| {println!("{}", e); Ok(())});
-                res.unwrap();
+                if f.len() > 4 && &f[f.len()-4..] == ".dat" {
+                    let p = Path::new(&f).to_path_buf();
+                    let res: Result<(), String> = load_state(cpu, &p)
+                        .or_else(|e| {println!("{}", e); Ok(())});
+                    res.unwrap();
+                } else if f.len() > 4 && &f[f.len()-4..] == ".nes" {
+                    return 
+                }
             },
             _ => (),
         }
