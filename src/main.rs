@@ -46,18 +46,23 @@ fn main() -> Result<(), String> {
     let filename = if argv.len() > 1 {
         argv[1].to_string()
     } else {
-        show_simple_message_box(MessageBoxFlag::OK, title: &str, message: &str, window: W)
+        show_simple_message_box(
+            MessageBoxFlag::INFORMATION, "Welcome to Nestur!", INSTRUCTIONS, canvas.window()
+        ).map_err(|e| e.to_string())?;
         let name;
         'waiting: loop {
             for event in event_pump.poll_iter() {
                 match event {
+                    Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
+                        => return Ok(()),
                     Event::DropFile{ filename: f, .. } => {
                         name = f;
                         break 'waiting;
                     },
-                    _ => std::thread::sleep(Duration::from_millis(500)),
+                    _ => (), // println!("event: {:?}", event),
                 }
             }
+            std::thread::sleep(Duration::from_millis(100));
         }
         name
     };
@@ -151,12 +156,6 @@ fn run_game(
     Ok(())
 }
 
-fn get_filename() -> String {
-    let argv: Vec<String> = std::env::args().collect();
-    assert!(argv.len() > 1, "must include .nes ROM as argument");
-    argv[1].clone()
-}
-
 fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu) -> bool {
     for event in event_pump.poll_iter() {
         match event {
@@ -190,6 +189,11 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
     }
     true
 }
+
+const INSTRUCTIONS: &str = "To play a game, drag an INES file (extension .nes) onto the main window.
+To save the game state, press F5. To load the most recent save state, press F9.
+To load another save state file, drag a .dat file onto the window while the game is running.
+Battery-backed RAM saves (what the NES cartridges have) will be written to a .sav file if used.";
 
 /*
 
