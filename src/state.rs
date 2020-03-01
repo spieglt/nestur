@@ -14,7 +14,7 @@ struct SaveState {
     apu: apu::serialize::ApuData,
 }
 
-pub fn save_state(cpu: &cpu::Cpu, save_file: PathBuf) -> Result<(), String> {
+pub fn save_state(cpu: &cpu::Cpu, save_file: &PathBuf) -> Result<(), String> {
     let data = SaveState{
         cpu: cpu.save_state(),
         ppu: cpu.ppu.save_state(),
@@ -30,7 +30,7 @@ pub fn save_state(cpu: &cpu::Cpu, save_file: PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-pub fn load_state(cpu: &mut cpu::Cpu, save_file: PathBuf) -> Result<(), String> {
+pub fn load_state(cpu: &mut cpu::Cpu, save_file: &PathBuf) -> Result<(), String> {
     if Path::new(&save_file).exists() {
         let mut f = File::open(save_file.clone())
             .map_err(|e| e.to_string())?;
@@ -51,18 +51,10 @@ pub fn load_state(cpu: &mut cpu::Cpu, save_file: PathBuf) -> Result<(), String> 
     }
 }
 
-pub fn change_file_extension(filename: &str, extension: &str) -> Option<PathBuf> {
-    let path = Path::new(filename).parent()?;
-    let stem = Path::new(&filename).file_stem()?;
-    let mut save_file = path.join(stem);
-    save_file.set_extension(extension);
-    Some(save_file)
-}
-
-pub fn find_next_filename(filepath: &PathBuf) -> Option<PathBuf> {
+pub fn find_next_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
     let path = filepath.parent()?.to_str()?;
     let stem = filepath.file_stem()?.to_str()?;
-    let ext = filepath.extension()?.to_str()?;
+    let ext = new_ext.or(Some(filepath.extension()?.to_str()?)).unwrap();
     let sep = std::path::MAIN_SEPARATOR.to_string();
     let mut i = 0;
     loop {
@@ -75,13 +67,24 @@ pub fn find_next_filename(filepath: &PathBuf) -> Option<PathBuf> {
     }
 }
 
-pub fn find_last_filename(filepath: &PathBuf) -> Option<PathBuf> {
+pub fn find_last_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
     let path = filepath.parent()?;
     let stem = filepath.file_stem()?.to_str()?;
+    let ext = new_ext.or(Some(filepath.extension()?.to_str()?)).unwrap();
     let files = std::fs::read_dir(path).expect("couldn't read directory");
-    let save_states = files.filter(|f| {
-        let n = f.unwrap().file_name().to_str().unwrap();
-        &n[..stem.len()] == stem && &n[n.len()-4..] == ".dat"
-    }).collect::<Result<Vec<_>, std::io::Error>>().unwrap();
+    let mut save_states = files
+        .map(|f| f.unwrap().path() )
+        .filter(|p| {
+            let pfs = p.file_name().unwrap().to_str().unwrap();
+            pfs.len() >= stem.len()
+                && pfs.len() >= ext.len()
+                && &pfs[..stem.len()] == stem
+                && &pfs[pfs.len()-ext.len()..] == ext
+        })
+        .collect::<Vec<PathBuf>>();
     save_states.sort();
+    match save_states.len() {
+        0 => None,
+        _ => Some(save_states[save_states.len()-1].clone()),
+    }
 }

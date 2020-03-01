@@ -20,10 +20,11 @@ ___________________
 |  Left  |  Left  |
 |  Right |  Right |
 -------------------
-Save state: F5
-Load state: F9
-(Saving state a second time overwrites the first unless you copy/rename the `.dat` file. You can drag and drop any `.dat` file onto the window to load it.)
 ```
+
+## Save states
+To save the state of the game at any time, press F5. To load the most recent save state, press F9. If the game is called `mygame.nes`, the save state files will be called `mygame-X.dat` where `X` is a number. To load any previous save state, drag and drop a `.dat` file onto the window.
+
 The code aims to follow the explanations from the [NES dev wiki](https://wiki.nesdev.com/w/index.php/NES_reference_guide) where possible, especially in the PPU, and the comments quote from it often. Thanks to everyone who contributes to that wiki/forum, and to Michael Fogleman's [NES](https://github.com/fogleman/nes) and Scott Ferguson's [Fergulator](https://github.com/scottferg/Fergulator) for getting me unstuck at several points.
 
 ## Compilation and use
@@ -47,8 +48,6 @@ The code aims to follow the explanations from the [NES dev wiki](https://wiki.ne
 - DMC audio channel, high- and low-pass filters
 
 - Better GUI
-
-- Better save state handling
 
 - Player 2 controller?
 
