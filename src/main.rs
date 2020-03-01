@@ -49,7 +49,7 @@ fn main() -> Result<(), String> {
     let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
 
     let argv = std::env::args().collect::<Vec<String>>();
-    let filename = if argv.len() > 1 {
+    let mut filename = if argv.len() > 1 {
         argv[1].to_string()
     } else {
         show_simple_message_box(
@@ -72,7 +72,15 @@ fn main() -> Result<(), String> {
         }
         name
     };
-    run_game(&sdl_context, &mut event_pump, &mut screen_buffer, &mut canvas, &mut texture, &filename)
+    loop {
+        let res = run_game(&sdl_context, &mut event_pump, &mut screen_buffer, &mut canvas, &mut texture, &filename);
+        match res {
+            Ok(Some(GameExitMode::NewGame(next_file))) => filename = next_file,
+            Ok(None) | Ok(Some(GameExitMode::QuitApplication)) => return Ok(()),
+            Err(e) => return Err(e),
+            Ok(Some(GameExitMode::Neither)) => panic!("shouldn't have returned exit mode Neither to main()"),
+        }
+    }
 }
 
 fn run_game(
@@ -82,7 +90,9 @@ fn run_game(
         canvas: &mut Canvas<Window>,
         texture: &mut Texture,
         filename: &str
-    ) -> Result<(), String> {
+    ) -> Result<Option<GameExitMode>, String> {
+
+    println!("loading game {}", filename);
 
     // Set up audio
     let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
@@ -139,8 +149,11 @@ fn run_game(
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();
-                if !process_events(event_pump, &filepath, &mut cpu) {
-                    break 'running;
+                let outcome = process_events(event_pump, &filepath, &mut cpu);
+                match outcome {
+                    GameExitMode::QuitApplication => break 'running,
+                    GameExitMode::NewGame(g) => return Ok(Some(GameExitMode::NewGame(g))),
+                    GameExitMode::Neither => (),
                 }
             }
         }
@@ -152,21 +165,21 @@ fn run_game(
         // calculate fps
         let now = Instant::now();
         if now > fps_timer + Duration::from_secs(1) {
-            println!("fps: {}", fps);
+            println!("frames per second: {}", fps);
             fps = 0;
             fps_timer = now;
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();
     mapper.borrow().save_battery_backed_ram();
-    Ok(())
+    Ok(None)
 }
 
-fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu) -> bool {
+fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu) -> GameExitMode {
     for event in event_pump.poll_iter() {
         match event {
             Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
-                => return false,
+                => return GameExitMode::QuitApplication,
             Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
                 let save_file = find_next_filename(filepath, Some("dat"))
                     .expect("could not generate save state filename");
@@ -191,13 +204,13 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
                         .or_else(|e| {println!("{}", e); Ok(())});
                     res.unwrap();
                 } else if f.len() > 4 && &f[f.len()-4..] == ".nes" {
-                    return 
+                    return GameExitMode::NewGame(f)
                 }
             },
             _ => (),
         }
     }
-    true
+    return GameExitMode::Neither
 }
 
 const INSTRUCTIONS: &str = "To play a game, drag an INES file (extension .nes) onto the main window.
@@ -211,8 +224,8 @@ TODO:
 - high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
-- GUI: load new game if .nes dropped, instructions on screen if no arg given, error messages if wrong file dropped.
 - reset function/button
+- better save file organization? if save file is dropped on window, have it load game?
 
 
 Timing notes:
