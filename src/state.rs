@@ -4,7 +4,7 @@ use super::apu;
 
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
@@ -14,7 +14,7 @@ struct SaveState {
     apu: apu::serialize::ApuData,
 }
 
-pub fn save_state(cpu: &cpu::Cpu, filename: &str) -> Result<(), String> {
+pub fn save_state(cpu: &cpu::Cpu, save_file: PathBuf) -> Result<(), String> {
     let data = SaveState{
         cpu: cpu.save_state(),
         ppu: cpu.ppu.save_state(),
@@ -30,19 +30,7 @@ pub fn save_state(cpu: &cpu::Cpu, filename: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn load_state(cpu: &mut cpu::Cpu, filename: &str) -> Result<(), String> {
-    // load file, deserialize to cpudata, set cpu fields to data fields
-    let path = match Path::new(&filename).parent() {
-        Some(p) => p,
-        None => return Err("couldn't convert filename to path".to_string()),
-    };
-    let stem = match Path::new(&filename).file_stem() {
-        Some(s) => s,
-        None => return Err("couldn't get file stem".to_string()),
-    };
-    let mut save_file = path.join(stem);
-    save_file.set_extension("dat");
-
+pub fn load_state(cpu: &mut cpu::Cpu, save_file: PathBuf) -> Result<(), String> {
     if Path::new(&save_file).exists() {
         let mut f = File::open(save_file.clone())
             .map_err(|e| e.to_string())?;

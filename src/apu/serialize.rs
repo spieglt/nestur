@@ -2,8 +2,7 @@ pub type ApuData = super::Apu;
 
 impl super::Apu{
     pub fn save_state(&self) -> ApuData {
-        let x: ApuData = self.clone();
-        x
+        self.clone()
     }
 
     pub fn load_state(&mut self, data: ApuData) {
