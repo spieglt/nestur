@@ -13,13 +13,14 @@ use apu::Apu;
 use cartridge::get_mapper;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
-use state::{save_state, load_state};
+use state::{save_state, load_state, change_file_extension};
 
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
+use std::path::Path;
 
 // use cpuprofiler::PROFILER;
 
@@ -96,12 +97,20 @@ fn main() -> Result<(), String> {
                         Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
                             => break 'running,
                         Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
-                            let res: Result<(), String> = save_state(&cpu, &filename)
+                            let dat_filename = state::change_file_extension(&filename, "dat").unwrap();
+                            let res: Result<(), String> = save_state(&cpu, dat_filename)
                                 .or_else(|e| {println!("{}", e); Ok(())});
                             res.unwrap();
                         },
                         Event::KeyDown{ keycode: Some(Keycode::F9), .. } => {
-                            let res: Result<(), String> = load_state(&mut cpu, &filename)
+                            let dat_filename = state::change_file_extension(&filename, "dat").unwrap();
+                            let res: Result<(), String> = load_state(&mut cpu, dat_filename)
+                                .or_else(|e| {println!("{}", e); Ok(())});
+                            res.unwrap();
+                        },
+                        Event::DropFile{ timestamp: _t, window_id: _w, filename: f } => {
+                            let p = Path::new(&f).to_path_buf();
+                            let res: Result<(), String> = load_state(&mut cpu, p)
                                 .or_else(|e| {println!("{}", e); Ok(())});
                             res.unwrap();
                         },
