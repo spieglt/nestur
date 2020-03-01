@@ -13,11 +13,12 @@ use apu::Apu;
 use cartridge::get_mapper;
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
-use state::{save_state, load_state};
+use state::{save_state, load_state, change_file_extension, find_next_filename};
 
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 use sdl2::keyboard::Keycode;
+use sdl2::EventPump;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
 
@@ -90,23 +91,8 @@ fn main() -> Result<(), String> {
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
                 timer = Instant::now();
-                // check for Esc or window close
-                for event in event_pump.poll_iter() {
-                    match event {
-                        Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
-                            => break 'running,
-                        Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
-                            let res: Result<(), String> = save_state(&cpu, &filename)
-                                .or_else(|e| {println!("{}", e); Ok(())});
-                            res.unwrap();
-                        },
-                        Event::KeyDown{ keycode: Some(Keycode::F9), .. } => {
-                            let res: Result<(), String> = load_state(&mut cpu, &filename)
-                                .or_else(|e| {println!("{}", e); Ok(())});
-                            res.unwrap();
-                        },
-                        _ => (),
-                    }
+                if !process_events(&mut event_pump, &filename, &mut cpu) {
+                    break 'running;
                 }
             }
         }
@@ -132,6 +118,36 @@ fn get_filename() -> String {
     let argv: Vec<String> = std::env::args().collect();
     assert!(argv.len() > 1, "must include .nes ROM as argument");
     argv[1].clone()
+}
+
+fn process_events(event_pump: &mut EventPump, filename: &str, cpu: &mut Cpu) -> bool {
+    for event in event_pump.poll_iter() {
+        match event {
+            Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
+                => return false,
+            Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
+                let dat_filename = change_file_extension(&filename, "dat").unwrap();
+                println!("{:?}", find_next_filename(&dat_filename));
+                let res: Result<(), String> = save_state(cpu, dat_filename)
+                    .or_else(|e| {println!("{}", e); Ok(())});
+                res.unwrap();
+            },
+            Event::KeyDown{ keycode: Some(Keycode::F9), .. } => {
+                let dat_filename = change_file_extension(&filename, "dat").unwrap();
+                let res: Result<(), String> = load_state(cpu, dat_filename)
+                    .or_else(|e| {println!("{}", e); Ok(())});
+                res.unwrap();
+            },
+            Event::DropFile{ timestamp: _t, window_id: _w, filename: f } => {
+                let p = Path::new(&f).to_path_buf();
+                let res: Result<(), String> = load_state(cpu, p)
+                    .or_else(|e| {println!("{}", e); Ok(())});
+                res.unwrap();
+            },
+            _ => (),
+        }
+    }
+    true
 }
 
 /*
