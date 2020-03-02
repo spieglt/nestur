@@ -29,7 +29,13 @@ F9: load most recent save state
 ```
 If the game is called `mygame.nes`, the save state files will be called `mygame-#.dat`. To load any previous save state, drag and drop a `.dat` file onto the window.
 
-## Compilation and use
+## Use
+
+Double-click or run the executable from a terminal by itself to launch with instructions. Then click Ok and drag a (iNES/`.nes`) ROM file onto the window. Or, drag and drop a ROM file on to the executable to run it directly, or use the path to the ROM file as the first argument to the terminal command.
+
+If the game uses battery-backed RAM (if it can save data when the console is turned off), a save file like `rom_filename.sav` will be created in the same folder as the ROM when the program is exited. When Nestur is run again, it will look for a file matching the ROM name, with a `.sav` extension instead of `.nes`.
+
+## Compilation
 
 1. Install [Rust](https://www.rust-lang.org/tools/install)
 2. Have a C compiler
@@ -42,8 +48,6 @@ If the game is called `mygame.nes`, the save state files will be called `mygame-
     - [Windows](https://cmake.org/download/)
 4. `cd nestur/ && cargo build --release` (be sure to build/run with the release flag or it will run very slowly)
 5. The `nestur` executable or `nestur.exe` will be in `nestur/target/release`.
-6. Run with `$ ./nestur path/to/rom_filename.nes` or `> nestur.exe path\to\rom_filename.nes`.
-7. If the game uses battery-backed RAM (if it can save data when turned off), a save file like `rom_filename.sav` will be created in the same folder as the ROM when the program is exited. When Nestur is run again, it will look for a file matching the ROM name, with a `.sav` extension instead of `.nes`.
 
 ## To do
 
