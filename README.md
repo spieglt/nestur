@@ -49,9 +49,7 @@ If the game is called `mygame.nes`, the save state files will be called `mygame-
 
 - DMC audio channel, high- and low-pass filters
 
-- Better GUI
-
-- Player 2 controller?
+- support other controllers?
 
 ## Known problem games
 
