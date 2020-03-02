@@ -226,7 +226,16 @@ const INSTRUCTIONS: &str = "To play a game, drag an INES file (extension .nes) o
 To save the game state, press F5. To load the most recent save state, press F9.
 To load another save state file, drag a .dat file onto the window while the game is running.
 Battery-backed RAM saves (what the NES cartridges have) will be written to a .sav file if used.
-To reset the console/current game, press F2.";
+To reset the console/current game, press F2.
+
+Controls
+------------
+A: D
+B: F
+Start: enter
+Select: (right) shift
+Up/Down/Left/Right: arrow keys
+";
 
 /*
 
