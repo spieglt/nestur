@@ -33,7 +33,8 @@ use sdl2::messagebox::*;
 enum GameExitMode {
     QuitApplication,
     NewGame(String),
-    Neither,
+    Reset,
+    Nothing,
 }
 
 fn main() -> Result<(), String> {
@@ -75,10 +76,11 @@ fn main() -> Result<(), String> {
     loop {
         let res = run_game(&sdl_context, &mut event_pump, &mut screen_buffer, &mut canvas, &mut texture, &filename);
         match res {
+            Ok(Some(GameExitMode::Reset)) => (),
             Ok(Some(GameExitMode::NewGame(next_file))) => filename = next_file,
             Ok(None) | Ok(Some(GameExitMode::QuitApplication)) => return Ok(()),
             Err(e) => return Err(e),
-            Ok(Some(GameExitMode::Neither)) => panic!("shouldn't have returned exit mode Neither to main()"),
+            Ok(Some(GameExitMode::Nothing)) => panic!("shouldn't have returned exit mode Nothing to main()"),
         }
     }
 }
@@ -152,8 +154,9 @@ fn run_game(
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
+                    GameExitMode::Reset => return Ok(Some(GameExitMode::Reset)),
                     GameExitMode::NewGame(g) => return Ok(Some(GameExitMode::NewGame(g))),
-                    GameExitMode::Neither => (),
+                    GameExitMode::Nothing => (),
                 }
             }
         }
@@ -180,6 +183,8 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
         match event {
             Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
                 => return GameExitMode::QuitApplication,
+            Event::KeyDown{ keycode: Some(Keycode::F2), .. }
+                => return GameExitMode::Reset,
             Event::KeyDown{ keycode: Some(Keycode::F5), .. } => {
                 let save_file = find_next_filename(filepath, Some("dat"))
                     .expect("could not generate save state filename");
@@ -214,13 +219,14 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
             _ => (),
         }
     }
-    return GameExitMode::Neither
+    return GameExitMode::Nothing
 }
 
 const INSTRUCTIONS: &str = "To play a game, drag an INES file (extension .nes) onto the main window.
 To save the game state, press F5. To load the most recent save state, press F9.
 To load another save state file, drag a .dat file onto the window while the game is running.
-Battery-backed RAM saves (what the NES cartridges have) will be written to a .sav file if used.";
+Battery-backed RAM saves (what the NES cartridges have) will be written to a .sav file if used.
+To reset the console/current game, press F2.";
 
 /*
 
@@ -228,7 +234,6 @@ TODO:
 - high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
-- reset function/button
 - better save file organization? if save file is dropped on window, have it load game?
 
 

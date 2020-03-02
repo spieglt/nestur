@@ -22,10 +22,12 @@ ___________________
 |  Left  |  Left  |
 |  Right |  Right |
 -------------------
-```
 
-## Save states
-To save the state of the game at any time, press F5. To load the most recent save state, press F9. If the game is called `mygame.nes`, the save state files will be called `mygame-X.dat` where `X` is a number. To load any previous save state, drag and drop a `.dat` file onto the window.
+F2: reset console
+F5: save game state
+F9: load most recent save state
+```
+If the game is called `mygame.nes`, the save state files will be called `mygame-#.dat`. To load any previous save state, drag and drop a `.dat` file onto the window.
 
 ## Compilation and use
 
