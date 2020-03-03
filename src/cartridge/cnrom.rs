@@ -1,4 +1,4 @@
-use super::{Cartridge, Mapper, Mirror};
+use super::{Cartridge, Mapper, Mirror, serialize::*};
 
 pub struct Cnrom {
     cart: Cartridge,
@@ -41,4 +41,20 @@ impl Mapper for Cnrom {
     fn save_battery_backed_ram(&self) {}
     fn clock(&mut self) {}
     fn check_irq(&mut self) -> bool {false}
+
+    fn save_state(&self) -> MapperData {
+        MapperData::Cnrom(
+            CnromData {
+                cart: self.cart.clone(),
+                chr_bank_select: self.chr_bank_select,
+            }
+        )
+    }
+
+    fn load_state(&mut self, mapper_data: MapperData) {
+        if let MapperData::Cnrom(cnrom_data) = mapper_data {
+            self.cart = cnrom_data.cart;
+            self.chr_bank_select = cnrom_data.chr_bank_select;
+        }
+    }
 }

@@ -63,8 +63,13 @@ fn main() -> Result<(), String> {
                     Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. }
                         => return Ok(()),
                     Event::DropFile{ filename: f, .. } => {
-                        name = f;
-                        break 'waiting;
+                        match check_signature(&f) {
+                            Ok(()) => {
+                                name = f;
+                                break 'waiting;
+                            },
+                            Err(e) => println!("{}", e),
+                        }
                     },
                     _ => (), // println!("event: {:?}", event),
                 }
@@ -210,7 +215,7 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
                     res.unwrap();
                 // } else if f.len() > 4 && &f[f.len()-4..] == ".nes" {
                 } else {
-                    match cartridge::check_signature(&f) {
+                    match check_signature(&f) {
                         Ok(()) => return GameExitMode::NewGame(f),
                         Err(e) => println!("{}", e),
                     }

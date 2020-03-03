@@ -1,4 +1,4 @@
-use super::{Cartridge, Mapper, Mirror};
+use super::{Cartridge, Mapper, Mirror, serialize::*};
 
 use std::fs::File;
 use std::io::{Read, Write};
@@ -210,4 +210,42 @@ impl Mapper for Mmc1 {
 
     fn clock(&mut self) {}
     fn check_irq(&mut self) -> bool {false}
+
+    fn save_state(&self) -> MapperData {
+        MapperData::Mmc1(
+            Mmc1Data {
+                cart: self.cart.clone(),
+                step: self.step,
+                shift_register: self.shift_register,
+                mirroring: self.mirroring,
+                control: self.control,
+                prg_ram_bank: self.prg_ram_bank.clone(),
+                prg_ram_enabled: self.prg_ram_enabled,
+                prg_bank_mode: self.prg_bank_mode,
+                prg_bank_select: self.prg_bank_select,
+                chr_ram_bank: self.chr_ram_bank.clone(),
+                chr_low_bank: self.chr_low_bank,
+                chr_high_bank: self.chr_high_bank,
+                chr_bank_mode: self.chr_bank_mode,
+            }
+        )
+    }
+
+    fn load_state(&mut self, mapper_data: MapperData) {
+        if let MapperData::Mmc1(mmc1_data) = mapper_data {
+            self.cart = mmc1_data.cart;
+            self.step = mmc1_data.step;
+            self.shift_register = mmc1_data.shift_register;
+            self.mirroring = mmc1_data.mirroring;
+            self.control = mmc1_data.control;
+            self.prg_ram_bank = mmc1_data.prg_ram_bank;
+            self.prg_ram_enabled = mmc1_data.prg_ram_enabled;
+            self.prg_bank_mode = mmc1_data.prg_bank_mode;
+            self.prg_bank_select = mmc1_data.prg_bank_select;
+            self.chr_ram_bank = mmc1_data.chr_ram_bank;
+            self.chr_low_bank = mmc1_data.chr_low_bank;
+            self.chr_high_bank = mmc1_data.chr_high_bank;
+            self.chr_bank_mode = mmc1_data.chr_bank_mode;
+        }
+    }
 }

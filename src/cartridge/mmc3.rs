@@ -1,4 +1,4 @@
-use super::{Cartridge, Mapper, Mirror};
+use super::{Cartridge, Mapper, Mirror, serialize::*};
 
 pub struct Mmc3 {
     cart: Cartridge,
@@ -221,5 +221,45 @@ impl Mapper for Mmc3 {
             }
         }
         false
+    }
+
+    fn save_state(&self) -> MapperData {
+        MapperData::Mmc3(
+            Mmc3Data {
+                cart: self.cart.clone(),
+                mirroring: self.mirroring,
+                bank_registers: self.bank_registers.clone(),
+                next_bank: self.next_bank,
+                irq_latch: self.irq_latch,
+                irq_counter: self.irq_counter,
+                irq_enable: self.irq_enable,
+                trigger_irq: self.trigger_irq,
+                reload_counter: self.reload_counter,
+                irq_delay: self.irq_delay,
+                prg_ram_bank: self.prg_ram_bank.clone(),
+                prg_rom_bank_mode: self.prg_rom_bank_mode,
+                chr_rom_bank_mode: self.chr_rom_bank_mode,
+                chr_ram_bank: self.chr_ram_bank.clone(),
+            }
+        )
+    }
+
+    fn load_state(&mut self, mapper_data: MapperData) {
+        if let MapperData::Mmc3(mmc3_data) = mapper_data {
+            self.cart = mmc3_data.cart;
+            self.mirroring = mmc3_data.mirroring;
+            self.bank_registers = mmc3_data.bank_registers;
+            self.next_bank = mmc3_data.next_bank;
+            self.irq_latch = mmc3_data.irq_latch;
+            self.irq_counter = mmc3_data.irq_counter;
+            self.irq_enable = mmc3_data.irq_enable;
+            self.trigger_irq = mmc3_data.trigger_irq;
+            self.reload_counter = mmc3_data.reload_counter;
+            self.irq_delay = mmc3_data.irq_delay;
+            self.prg_ram_bank = mmc3_data.prg_ram_bank;
+            self.prg_rom_bank_mode = mmc3_data.prg_rom_bank_mode;
+            self.chr_rom_bank_mode = mmc3_data.chr_rom_bank_mode;
+            self.chr_ram_bank = mmc3_data.chr_ram_bank;
+        }
     }
 }

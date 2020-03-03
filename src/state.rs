@@ -1,17 +1,18 @@
 use super::cpu;
 use super::ppu;
 use super::apu;
+use super::cartridge;
 
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct SaveState {
     cpu: cpu::serialize::CpuData,
     ppu: ppu::serialize::PpuData,
     apu: apu::serialize::ApuData,
+    mapper: cartridge::serialize::MapperData,
 }
 
 pub fn save_state(cpu: &cpu::Cpu, save_file: &PathBuf) -> Result<(), String> {
@@ -19,6 +20,7 @@ pub fn save_state(cpu: &cpu::Cpu, save_file: &PathBuf) -> Result<(), String> {
         cpu: cpu.save_state(),
         ppu: cpu.ppu.save_state(),
         apu: cpu.apu.save_state(),
+        mapper: cpu.mapper.borrow().save_state(),
     };
     let serialized = serde_json::to_string(&data)
         .map_err(|e| e.to_string())?;
@@ -44,6 +46,7 @@ pub fn load_state(cpu: &mut cpu::Cpu, save_file: &PathBuf) -> Result<(), String>
         cpu.load_state(state.cpu);
         cpu.ppu.load_state(state.ppu);
         cpu.apu.load_state(state.apu);
+        cpu.mapper.borrow_mut().load_state(state.mapper);
         println!("loading save state from file: {:?}", save_file);
         Ok(())
     } else {

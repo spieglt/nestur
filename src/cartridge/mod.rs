@@ -3,6 +3,7 @@ mod mmc1;
 mod uxrom;
 mod cnrom;
 mod mmc3;
+pub mod serialize;
 
 use nrom::Nrom;
 use mmc1::Mmc1;
@@ -12,8 +13,6 @@ use mmc3::Mmc3;
 
 use std::cell::RefCell;
 use std::fs::File;
-use std::io;
-use std::io::prelude::*;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -25,9 +24,11 @@ pub trait Mapper {
     fn save_battery_backed_ram(&self);
     fn clock(&mut self);
     fn check_irq(&mut self) -> bool;
+    fn save_state(&self) -> serialize::MapperData;
+    fn load_state(&mut self, mapper_data: serialize::MapperData);
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Mirror {
     LowBank,
     HighBank,
@@ -49,6 +50,7 @@ pub fn get_mapper(filename: String) -> Rc<RefCell<dyn Mapper>> {
     }
 }
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Cartridge {
     filename: String,
     prg_rom_size: usize,

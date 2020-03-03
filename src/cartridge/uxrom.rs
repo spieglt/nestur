@@ -1,4 +1,4 @@
-use super::{Cartridge, Mapper, Mirror};
+use super::{Cartridge, Mapper, Mirror, serialize::*};
 
 pub struct Uxrom {
     cart: Cartridge,
@@ -52,4 +52,22 @@ impl Mapper for Uxrom {
     fn save_battery_backed_ram(&self) {}
     fn clock(&mut self) {}
     fn check_irq(&mut self) -> bool {false}
+
+    fn save_state(&self) -> MapperData {
+        MapperData::Uxrom(
+            UxromData {
+                cart: self.cart.clone(),
+                chr_ram: self.chr_ram.clone(),
+                bank_select: self.bank_select,
+            }
+        )
+    }
+
+    fn load_state(&mut self, mapper_data: MapperData) {
+        if let MapperData::Uxrom(uxrom_data) = mapper_data {
+            self.cart = uxrom_data.cart;
+            self.chr_ram = uxrom_data.chr_ram;
+            self.bank_select = uxrom_data.bank_select;
+        }
+    }
 }
