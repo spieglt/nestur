@@ -1,6 +1,4 @@
 /*
-First order low-pass filter equation: H(s)=1/(τs+1). H(s) is output, 
-
 low pass filter:
 y = (1 - gamma) * y + gamma * x
 
@@ -10,7 +8,9 @@ y[i] := gamma * y[i−1] + gamma * (x[i] − x[i−1])
 fc = 44100 = sample frequency
 Ts = 1/44100 = sample period
 fc = 14000 = cutoff frequency
-gamma = 1 - (e ^ (-2pi * fc / fs))
+
+gamma = 1 - (e ^ (-2pi * fc / fs))? from http://www.tsdconseil.fr/tutos/tuto-iir1-en.pdf but that's just a first-order filter, is it low-pass?
+
 */
 
 use std::f32::consts::{E, PI};
@@ -27,26 +27,13 @@ const SDL_SAMPLE_RATE: i32 = 44_100;
 // devices and then sleeping. So the audio device is set to play 44,100 samples per second, and grab them in 60 intervals over the course of that second.
 const SAMPLES_PER_FRAME: u16 = SDL_SAMPLE_RATE as u16/60;
 
-// struct LowPass {
-//     cutoff_freq: f32,
-//     gamma: f32,
-//     previous_input: f32,
-//     previous_out: f32,
-// }
+fn low_pass_coefficient(cutoff_freq: f32) -> f32 {
+    // 1. - (E.powf(-2. * PI * cutoff_freq / (SDL_SAMPLE_RATE as f32)))
+    (2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
+}
 
-// struct HighPass {
-//     cutoff_freq: f32,
-//     gamma: f32,
-//     previous_input: f32,
-//     previous_out: f32,
-// }
-
-// impl HighPass {
-//     fn filter(&self, sample: f32) -> f32 
-// }
-
-fn get_gamma(cutoff_freq: f32) -> f32 {
-    1. - (E.powf(-2. * PI * cutoff_freq / (SDL_SAMPLE_RATE as f32)))
+fn high_pass_coefficient(cutoff_freq: f32) -> f32 {
+    1. / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
 }
 
 pub struct ApuSampler {
@@ -144,20 +131,20 @@ pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
 
             prev_input_90Hz: 0.,
             prev_output_90Hz: 0.,
-            gamma_90Hz: 1.-get_gamma(90.),
+            gamma_90Hz: high_pass_coefficient(90.),
             prev_input_440Hz: 0.,
             prev_output_440Hz: 0.,
-            gamma_440Hz: 1.-get_gamma(440.),
+            gamma_440Hz: high_pass_coefficient(440.),
             prev_input_14kHz: 0.,
             prev_output_14kHz: 0.,
-            gamma_14kHz: get_gamma(14_000.),
+            gamma_14kHz: low_pass_coefficient(14_000.),
         }
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::get_gamma;
+    use super::low_pass_coefficient;
     #[test]
     fn show_gamma_values() {
         for i in [0, 100, 1000, 10000, 100000].iter() {
