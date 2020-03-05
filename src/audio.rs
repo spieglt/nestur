@@ -28,9 +28,6 @@ pub struct ApuSampler {
     prev_input_14_khz: f32,
     prev_output_14_khz: f32,
     gamma_14_khz: f32,
-
-    filter_toggle: bool,
-    t: Instant,
 }
 
 impl ApuSampler {
@@ -54,19 +51,6 @@ impl AudioCallback for ApuSampler {
 
     fn callback(&mut self, out: &mut [f32]) {
 
-        // for testing filters
-        let now = Instant::now();
-        if now.duration_since(self.t) > Duration::from_secs(3) {
-            self.t = now;
-            if self.filter_toggle {
-                println!("flipping filters OFF");
-                self.filter_toggle = false;
-            } else {
-                println!("flipping filters ON");
-                self.filter_toggle = true;
-            }
-        }
-
         let mut b = self.buffer.lock().unwrap();
         // if we have data in the buffer
         if b.len() > 0 {
@@ -76,24 +60,18 @@ impl AudioCallback for ApuSampler {
                 if sample_idx < b.len() {
                     let sample = b[sample_idx];
 
-                    if self.filter_toggle {
-                        let filtered_90_hz = self.high_pass_90_hz(sample);
-                        self.prev_input_90_hz = sample;
-                        self.prev_output_90_hz = filtered_90_hz;
-                        // *x = filtered_90_hz;
+                    let filtered_90_hz = self.high_pass_90_hz(sample);
+                    self.prev_input_90_hz = sample;
+                    self.prev_output_90_hz = filtered_90_hz;
 
-                        let filtered_440_hz = self.high_pass_440_hz(filtered_90_hz);
-                        self.prev_input_440_hz = filtered_90_hz;
-                        self.prev_output_440_hz = filtered_440_hz;
-                        // *x = filtered_440_hz;
+                    let filtered_440_hz = self.high_pass_440_hz(filtered_90_hz);
+                    self.prev_input_440_hz = filtered_90_hz;
+                    self.prev_output_440_hz = filtered_440_hz;
 
-                        let filtered_14_khz = self.low_pass_14_khz(filtered_440_hz);
-                        self.prev_input_14_khz = filtered_440_hz;
-                        self.prev_output_14_khz = filtered_14_khz;
-                        *x = filtered_14_khz;
-                    } else {
-                        *x = sample;
-                    }
+                    let filtered_14_khz = self.low_pass_14_khz(filtered_440_hz);
+                    self.prev_input_14_khz = filtered_440_hz;
+                    self.prev_output_14_khz = filtered_14_khz;
+                    *x = filtered_14_khz;
                 }
             }
             let l = b.len();
@@ -130,8 +108,6 @@ pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
             prev_input_14_khz: 0.,
             prev_output_14_khz: 0.,
             gamma_14_khz: low_pass_coefficient(14_000.),
-            filter_toggle: false,
-            t: Instant::now(),
         }
     })
 }
