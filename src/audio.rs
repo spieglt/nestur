@@ -1,25 +1,8 @@
-/*
-low pass filter:
-y = (1 - gamma) * y + gamma * x
-
-high pass filter:
-y[i] := gamma * y[i−1] + gamma * (x[i] − x[i−1])
-
-fc = 44100 = sample frequency
-Ts = 1/44100 = sample period
-fc = 14000 = cutoff frequency
-
-gamma = 1 - (e ^ (-2pi * fc / fs))? from http://www.tsdconseil.fr/tutos/tuto-iir1-en.pdf but that's just a first-order filter, is it low-pass?
-
-*/
-
-use std::f32::consts::{E, PI};
-
-extern crate sdl2;
-
+use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use sdl2::Sdl;
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use std::f32::consts::PI;
 
 const APU_SAMPLE_RATE: f32 = 894_886.5;
 const SDL_SAMPLE_RATE: i32 = 44_100;
@@ -27,14 +10,6 @@ const SDL_SAMPLE_RATE: i32 = 44_100;
 // devices and then sleeping. So the audio device is set to play 44,100 samples per second, and grab them in 60 intervals over the course of that second.
 const SAMPLES_PER_FRAME: u16 = SDL_SAMPLE_RATE as u16/60;
 
-fn low_pass_coefficient(cutoff_freq: f32) -> f32 {
-    // 1. - (E.powf(-2. * PI * cutoff_freq / (SDL_SAMPLE_RATE as f32)))
-    (2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
-}
-
-fn high_pass_coefficient(cutoff_freq: f32) -> f32 {
-    1. / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
-}
 
 pub struct ApuSampler {
     // This buffer receives all of the raw audio produced by the APU.
@@ -42,32 +17,34 @@ pub struct ApuSampler {
     buffer: Arc<Mutex<Vec<f32>>>,
     sample_ratio: f32,
 
-    prev_input_90Hz: f32,
-    prev_output_90Hz: f32,
-    gamma_90Hz: f32,
+    prev_input_90_hz: f32,
+    prev_output_90_hz: f32,
+    gamma_90_hz: f32,
 
-    prev_input_440Hz: f32,
-    prev_output_440Hz: f32,
-    gamma_440Hz: f32,
+    prev_input_440_hz: f32,
+    prev_output_440_hz: f32,
+    gamma_440_hz: f32,
 
-    prev_input_14kHz: f32,
-    prev_output_14kHz: f32,
-    gamma_14kHz: f32,
+    prev_input_14_khz: f32,
+    prev_output_14_khz: f32,
+    gamma_14_khz: f32,
+
+    filter_toggle: bool,
+    t: Instant,
 }
 
 impl ApuSampler {
-
-    fn high_pass_90Hz(&self, sample: f32) -> f32 {
+    fn high_pass_90_hz(&self, sample: f32) -> f32 {
         // y[i] := α × y[i−1] + α × (x[i] − x[i−1])
-        (self.gamma_90Hz * self.prev_output_90Hz) + (sample - self.prev_input_90Hz)
+        (self.gamma_90_hz * self.prev_output_90_hz) + (sample - self.prev_input_90_hz)
     }
 
-    fn high_pass_440Hz(&self, sample: f32) -> f32 {
-        (self.gamma_440Hz * self.prev_output_440Hz) + (sample - self.prev_input_440Hz)
+    fn high_pass_440_hz(&self, sample: f32) -> f32 {
+        (self.gamma_440_hz * self.prev_output_440_hz) + (sample - self.prev_input_440_hz)
     }
 
-    fn low_pass_14kHz(&self, sample: f32) -> f32 {
-        ((1. - self.gamma_14kHz) * self.prev_output_14kHz) + (self.gamma_14kHz * sample)
+    fn low_pass_14_khz(&self, sample: f32) -> f32 {
+        ((1. - self.gamma_14_khz) * self.prev_output_14_khz) + (self.gamma_14_khz * sample)
     }
 
 }
@@ -76,6 +53,20 @@ impl AudioCallback for ApuSampler {
     type Channel = f32;
 
     fn callback(&mut self, out: &mut [f32]) {
+
+        // for testing filters
+        let now = Instant::now();
+        if now.duration_since(self.t) > Duration::from_secs(3) {
+            self.t = now;
+            if self.filter_toggle {
+                println!("flipping filters OFF");
+                self.filter_toggle = false;
+            } else {
+                println!("flipping filters ON");
+                self.filter_toggle = true;
+            }
+        }
+
         let mut b = self.buffer.lock().unwrap();
         // if we have data in the buffer
         if b.len() > 0 {
@@ -85,22 +76,24 @@ impl AudioCallback for ApuSampler {
                 if sample_idx < b.len() {
                     let sample = b[sample_idx];
 
-                    let filtered_90Hz = self.high_pass_90Hz(sample);
-                    self.prev_input_90Hz = sample;
-                    self.prev_output_90Hz = filtered_90Hz;
-                    // *x = filtered_90Hz;
+                    if self.filter_toggle {
+                        let filtered_90_hz = self.high_pass_90_hz(sample);
+                        self.prev_input_90_hz = sample;
+                        self.prev_output_90_hz = filtered_90_hz;
+                        // *x = filtered_90_hz;
 
-                    let filtered_440Hz = self.high_pass_440Hz(filtered_90Hz);
-                    self.prev_input_440Hz = filtered_90Hz;
-                    self.prev_output_440Hz = filtered_440Hz;
-                    // *x = filtered_440Hz;
+                        let filtered_440_hz = self.high_pass_440_hz(filtered_90_hz);
+                        self.prev_input_440_hz = filtered_90_hz;
+                        self.prev_output_440_hz = filtered_440_hz;
+                        // *x = filtered_440_hz;
 
-                    let filtered_14kHz = self.low_pass_14kHz(filtered_440Hz);
-                    self.prev_input_14kHz = filtered_440Hz;
-                    self.prev_output_14kHz = filtered_14kHz;
-                    *x = filtered_14kHz;
-
-                    // *x = sample;
+                        let filtered_14_khz = self.low_pass_14_khz(filtered_440_hz);
+                        self.prev_input_14_khz = filtered_440_hz;
+                        self.prev_output_14_khz = filtered_14_khz;
+                        *x = filtered_14_khz;
+                    } else {
+                        *x = sample;
+                    }
                 }
             }
             let l = b.len();
@@ -128,27 +121,38 @@ pub fn initialize(sdl_context: &Sdl, buffer: Arc<Mutex<Vec<f32>>>)
         ApuSampler{
             buffer,
             sample_ratio: APU_SAMPLE_RATE / (SDL_SAMPLE_RATE as f32),
-
-            prev_input_90Hz: 0.,
-            prev_output_90Hz: 0.,
-            gamma_90Hz: high_pass_coefficient(90.),
-            prev_input_440Hz: 0.,
-            prev_output_440Hz: 0.,
-            gamma_440Hz: high_pass_coefficient(440.),
-            prev_input_14kHz: 0.,
-            prev_output_14kHz: 0.,
-            gamma_14kHz: low_pass_coefficient(14_000.),
+            prev_input_90_hz: 0.,
+            prev_output_90_hz: 0.,
+            gamma_90_hz: high_pass_coefficient(90.),
+            prev_input_440_hz: 0.,
+            prev_output_440_hz: 0.,
+            gamma_440_hz: high_pass_coefficient(440.),
+            prev_input_14_khz: 0.,
+            prev_output_14_khz: 0.,
+            gamma_14_khz: low_pass_coefficient(14_000.),
+            filter_toggle: false,
+            t: Instant::now(),
         }
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::low_pass_coefficient;
-    #[test]
-    fn show_gamma_values() {
-        for i in [0, 100, 1000, 10000, 100000].iter() {
-            println!("gamma for cutoff frequency {}: {}", i, get_gamma(*i as f32));
-        }
-    }
+fn low_pass_coefficient(cutoff_freq: f32) -> f32 {
+    (2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
 }
+
+fn high_pass_coefficient(cutoff_freq: f32) -> f32 {
+    1. / ((2.*PI*cutoff_freq/SDL_SAMPLE_RATE as f32) + 1.)
+}
+
+/*
+
+https://en.wikipedia.org/wiki/High-pass_filter
+https://en.wikipedia.org/wiki/Low-pass_filter
+
+low pass filter:
+y = (1 - gamma) * y + gamma * x
+
+high pass filter:
+y[i] := gamma * y[i−1] + gamma * (x[i] − x[i−1])
+
+*/
