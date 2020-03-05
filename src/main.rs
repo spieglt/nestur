@@ -245,10 +245,9 @@ Up/Down/Left/Right: arrow keys
 /*
 
 TODO:
-- high- and low-pass audio filters
 - DMC audio channel
 - untangle CPU and APU/PPU?
-- better save file organization? if save file is dropped on window, have it load game?
+- better save file organization?
 
 
 Timing notes:

@@ -51,7 +51,7 @@ If the game uses battery-backed RAM (if it can save data when the console is tur
 
 ## To do
 
-- DMC audio channel, high- and low-pass filters
+- DMC audio channel
 
 - support other controllers?
 
