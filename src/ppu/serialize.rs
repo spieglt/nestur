@@ -9,10 +9,10 @@ pub struct PpuData {
     t: u16,
     x: u8,
     w: u8,
-    nametable_A: Vec<u8>,
-    nametable_B: Vec<u8>,
-    nametable_C: Vec<u8>,
-    nametable_D: Vec<u8>,
+    nametable_a: Vec<u8>,
+    nametable_b: Vec<u8>,
+    nametable_c: Vec<u8>,
+    nametable_d: Vec<u8>,
     palette_ram: Vec<u8>,
     background_pattern_sr_low: u16,
     background_pattern_sr_high: u16,
@@ -65,10 +65,10 @@ impl super::Ppu {
             t: self.t,
             x: self.x,
             w: self.w,
-            nametable_A: self.nametable_A.clone(),
-            nametable_B: self.nametable_B.clone(),
-            nametable_C: self.nametable_C.clone(),
-            nametable_D: self.nametable_D.clone(),
+            nametable_a: self.nametable_a.clone(),
+            nametable_b: self.nametable_b.clone(),
+            nametable_c: self.nametable_c.clone(),
+            nametable_d: self.nametable_d.clone(),
             palette_ram: self.palette_ram.clone(),
             background_pattern_sr_low: self.background_pattern_sr_low,
             background_pattern_sr_high: self.background_pattern_sr_high,
@@ -120,10 +120,10 @@ impl super::Ppu {
         self.t = data.t;
         self.x = data.x;
         self.w = data.w;
-        self.nametable_A = data.nametable_A;
-        self.nametable_B = data.nametable_B;
-        self.nametable_C = data.nametable_C;
-        self.nametable_D = data.nametable_D;
+        self.nametable_a = data.nametable_a;
+        self.nametable_b = data.nametable_b;
+        self.nametable_c = data.nametable_c;
+        self.nametable_d = data.nametable_d;
         self.palette_ram = data.palette_ram;
         self.background_pattern_sr_low = data.background_pattern_sr_low;
         self.background_pattern_sr_high = data.background_pattern_sr_high;

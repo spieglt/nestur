@@ -13,7 +13,7 @@ use apu::Apu;
 use cartridge::{check_signature, get_mapper};
 use input::poll_buttons;
 use screen::{init_window, draw_pixel, draw_to_window};
-use state::{save_state, load_state, find_next_filename, find_last_filename};
+use state::{save_state, load_state, find_next_filename, find_last_save_state};
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -107,7 +107,7 @@ fn run_game(
     let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
     let audio_device = audio::initialize(sdl_context, sdl_buffer).expect("Could not create audio device");
     let mut half_cycle = false;
-    audio_device.resume();
+    let mut audio_started = false;
 
     // Initialize hardware components
     let filepath = Path::new(filename).to_path_buf();
@@ -150,6 +150,10 @@ fn run_game(
                 draw_to_window(texture, canvas, &screen_buffer)?; // draw the buffer to the window with SDL
                 let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
                 b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
+                if !audio_started {
+                    audio_started = true;
+                    audio_device.resume();
+                }
                 let now = Instant::now();
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
@@ -198,7 +202,7 @@ fn process_events(event_pump: &mut EventPump, filepath: &PathBuf, cpu: &mut Cpu)
                 res.unwrap();
             },
             Event::KeyDown{ keycode: Some(Keycode::F9), .. } => {
-                match find_last_filename(filepath, Some("dat")) {
+                match find_last_save_state(filepath, Some("dat")) {
                     Some(p) => {
                         let res: Result<(), String> = load_state(cpu, &p)
                             .or_else(|e| { println!("{}", e); Ok(()) } );

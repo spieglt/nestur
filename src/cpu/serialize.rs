@@ -5,12 +5,12 @@ use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CpuData {
     mem: Vec<u8>,
-    A: u8,
-    X: u8,
-    Y: u8,
-    PC: usize,
-    S: u8,
-    P: u8,
+    a: u8,
+    x: u8,
+    y: u8,
+    pc: usize,
+    s: u8,
+    p: u8,
     clock: u64,
     delay: usize,
     strobe: u8,
@@ -23,12 +23,12 @@ impl super::Cpu {
     pub fn save_state(&self) -> CpuData {
         CpuData{
             mem: self.mem.clone(),
-            A: self.A,
-            X: self.X,
-            Y: self.Y,
-            PC: self.PC,
-            S: self.S,
-            P: self.P,
+            a: self.a,
+            x: self.x,
+            y: self.y,
+            pc: self.pc,
+            s: self.s,
+            p: self.p,
             clock: self.clock,
             delay: self.delay,
             strobe: self.strobe,
@@ -40,12 +40,12 @@ impl super::Cpu {
 
     pub fn load_state(&mut self, data: CpuData) {
         self.mem = data.mem;
-        self.A = data.A;
-        self.X = data.X;
-        self.Y = data.Y;
-        self.PC = data.PC;
-        self.S = data.S;
-        self.P = data.P;
+        self.a = data.a;
+        self.x = data.x;
+        self.y = data.y;
+        self.pc = data.pc;
+        self.s = data.s;
+        self.p = data.p;
         self.clock = data.clock;
         self.delay = data.delay;
         self.strobe = data.strobe;

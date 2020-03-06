@@ -3,15 +3,15 @@ impl super::Cpu {
     pub fn absolute(&mut self) -> usize {
         self.clock += 4;
         <usize>::from(
-            ((self.read(self.PC + 2) as usize) << 8) + // high byte, little endian
-            (self.read(self.PC + 1)) as usize // low byte
+            ((self.read(self.pc + 2) as usize) << 8) + // high byte, little endian
+            (self.read(self.pc + 1)) as usize // low byte
         )
     }
 
     pub fn absolute_x(&mut self) -> usize {
-        let current_opcode = self.read(self.PC);
+        let current_opcode = self.read(self.pc);
         let old_address = self.absolute();
-        let new_address = old_address + self.X as usize;
+        let new_address = old_address + self.x as usize;
         match current_opcode {
             0x1C | 0x1D | 0x3C | 0x3D | 0x5C | 0x5D | 0x7C | 0x7D | 0xBC | 0xBD | 0xDC | 0xDD | 0xFC | 0xFD
                 => self.address_page_cross(old_address, new_address),
@@ -23,9 +23,9 @@ impl super::Cpu {
     }
 
     pub fn absolute_y(&mut self) -> usize {
-        let current_opcode = self.PC;
+        let current_opcode = self.pc;
         let old_address = self.absolute() as u16; // coerce to u16 for wrapping addition
-        let new_address = old_address.wrapping_add(self.Y as u16);
+        let new_address = old_address.wrapping_add(self.y as u16);
         let old_address = old_address as usize; // coerce back
         let new_address = new_address as usize;
         if current_opcode == 0x99 {
@@ -43,7 +43,7 @@ impl super::Cpu {
 
     pub fn immediate(&mut self) -> usize {
         self.clock += 2;
-        self.PC + 1
+        self.pc + 1
     }
 
     pub fn implied(&mut self) -> usize {
@@ -53,8 +53,8 @@ impl super::Cpu {
 
     pub fn indexed_indirect(&mut self) -> usize {
         self.clock += 6;
-        let operand = self.read(self.PC + 1);
-        let zp_low_addr = operand.wrapping_add(self.X);
+        let operand = self.read(self.pc + 1);
+        let zp_low_addr = operand.wrapping_add(self.x);
         let zp_high_addr = zp_low_addr.wrapping_add(1); // take account of zero page wraparound
         let zp_low_byte = self.read(zp_low_addr as usize);
         let zp_high_byte = self.read(zp_high_addr as usize);
@@ -62,8 +62,8 @@ impl super::Cpu {
     }
 
     pub fn indirect(&mut self) -> usize {
-        let operand_address = ((self.read(self.PC + 2) as usize) << 8)
-            + (self.read(self.PC + 1) as usize);
+        let operand_address = ((self.read(self.pc + 2) as usize) << 8)
+            + (self.read(self.pc + 1) as usize);
         let low_byte = self.read(operand_address) as usize;
         // BUG TIME! from https://wiki.nesdev.com/w/index.php/Errata
         // "JMP ($xxyy), or JMP indirect, does not advance pages if the lower eight bits
@@ -80,14 +80,14 @@ impl super::Cpu {
     }
 
     pub fn indirect_indexed(&mut self) -> usize {
-        let operand = self.read(self.PC + 1);
+        let operand = self.read(self.pc + 1);
         let zp_low_addr = operand;
         let zp_high_addr = operand.wrapping_add(1);
         let zp_low_byte = self.read(zp_low_addr as usize);
         let zp_high_byte = self.read(zp_high_addr as usize);
         let old_address = ((zp_high_byte as u16) << 8) + zp_low_byte as u16;
-        let new_address = old_address.wrapping_add(self.Y as u16);
-        if self.PC == 0xF1 {
+        let new_address = old_address.wrapping_add(self.y as u16);
+        if self.pc == 0xF1 {
             self.clock += 1;
         } else {
             self.address_page_cross(old_address as usize, new_address as usize);
@@ -98,25 +98,25 @@ impl super::Cpu {
 
     pub fn relative(&mut self) -> usize {
         self.clock += 2;
-        self.PC + 1
+        self.pc + 1
     }
 
     pub fn zero_page(&mut self) -> usize {
-        let operand = self.read(self.PC + 1);
+        let operand = self.read(self.pc + 1);
         self.clock += 3;
         operand as usize
     }
 
     pub fn zero_page_x(&mut self) -> usize {
-        let operand = self.read(self.PC + 1);
+        let operand = self.read(self.pc + 1);
         self.clock += 4;
-        operand.wrapping_add(self.X) as usize
+        operand.wrapping_add(self.x) as usize
     }
 
     pub fn zero_page_y(&mut self) -> usize {
-        let operand = self.read(self.PC + 1);
+        let operand = self.read(self.pc + 1);
         self.clock += 4;
-        operand.wrapping_add(self.Y) as usize
+        operand.wrapping_add(self.y) as usize
     }
 
 }

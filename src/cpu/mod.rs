@@ -55,12 +55,12 @@ impl Mode {
 
 pub struct Cpu {
     mem: Vec<u8>, // CPU's RAM, $0000-$1FFF
-    A: u8,        // accumulator
-    X: u8,        // general purpose
-    Y: u8,        // general purpose
-    PC: usize,    // 16-bit program counter
-    S: u8,        // stack pointer
-    P: u8,        // status
+    a: u8,        // accumulator
+    x: u8,        // general purpose
+    y: u8,        // general purpose
+    pc: usize,    // 16-bit program counter
+    s: u8,        // stack pointer
+    p: u8,        // status
 
     clock: u64, // number of ticks in current cycle
     delay: usize, // for skipping cycles during OAM DMA
@@ -82,10 +82,10 @@ impl Cpu {
     pub fn new(mapper: Rc<RefCell<dyn Mapper>>, ppu: super::Ppu, apu: super::Apu) -> Self {
         let mut cpu = Cpu{
             mem: vec![0; 0x2000],
-            A: 0, X: 0, Y: 0,
-            PC: 0,
-            S: 0xFD,
-            P: 0x24,
+            a: 0, x: 0, y: 0,
+            pc: 0,
+            s: 0xFD,
+            p: 0x24,
             clock: 0,
             delay: 0,
             mapper: mapper,
@@ -133,7 +133,7 @@ impl Cpu {
         /*F0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*F0*/
             ],
         };
-        cpu.PC = ((cpu.read(RESET_VECTOR + 1) as usize) << 8) + cpu.read(RESET_VECTOR) as usize;
+        cpu.pc = ((cpu.read(RESET_VECTOR + 1) as usize) << 8) + cpu.read(RESET_VECTOR) as usize;
         cpu
     }
 
@@ -151,12 +151,12 @@ impl Cpu {
         }
         self.ppu.trigger_nmi = false;
         // and apu
-        if self.apu.trigger_irq && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
+        if self.apu.trigger_irq && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
             self.irq();
         }
         self.apu.trigger_irq = false;
         // and mapper MMC3
-        if self.mapper.borrow_mut().check_irq() && (self.P & INTERRUPT_DISABLE_FLAG == 0) {
+        if self.mapper.borrow_mut().check_irq() && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
             self.irq();
         }
         // TODO: should checks for APU and MMC3 IRQs be combined and acknowledged together?
@@ -164,7 +164,7 @@ impl Cpu {
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
-        let opcode = <usize>::from(self.read(self.PC));
+        let opcode = <usize>::from(self.read(self.pc));
 
         // get addressing mode
         let mode = self.mode_table[opcode].clone();
@@ -264,7 +264,7 @@ impl Cpu {
     }
 
     fn _debug(&mut self, num_bytes: usize, opcode: usize) {
-        let pc = self.PC;
+        let pc = self.pc;
         let operands = match num_bytes {
             1 => "     ".to_string(),
             2 => format!("{:02X}   ", self.read(pc + 1)),
@@ -273,7 +273,7 @@ impl Cpu {
         };
         println!("{:04X}  {:02X} {}  {}           A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
             pc, self.read(pc), operands, _OPCODE_DISPLAY_NAMES[opcode],
-            self.A, self.X, self.Y, self.P, self.S,
+            self.a, self.x, self.y, self.p, self.s,
         );
     }
 

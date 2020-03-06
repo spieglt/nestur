@@ -3,7 +3,7 @@ use super::{CARRY_FLAG, NEGATIVE_FLAG, STACK_OFFSET, ZERO_FLAG, Mode};
 impl super::Cpu {
 
     pub fn advance_pc(&mut self, mode: Mode) {
-        self.PC += match mode {
+        self.pc += match mode {
             Mode::ABS => 3,
             Mode::ABX => 3,
             Mode::ABY => 3,
@@ -24,13 +24,13 @@ impl super::Cpu {
         match offset >= 0 {
             true => {
                 let decoded_offset = offset as usize;
-                self.PC += decoded_offset;
+                self.pc += decoded_offset;
             },
             false => {
                 // instr_test-v5/rom_singles/11-stack.nes:
                 // letting decoded_offset be (-offset) as usize was allowing for overflow if offset was -128/0b10000000
                 let decoded_offset = (-offset) as u8;
-                self.PC -= decoded_offset as usize;
+                self.pc -= decoded_offset as usize;
             },
         }
     }
@@ -50,17 +50,17 @@ impl super::Cpu {
     pub fn branch(&mut self, unsigned_offset: u8) {
         let offset = unsigned_offset as i8;
         self.clock += 1;
-        let old_addr = self.PC;
+        let old_addr = self.pc;
         self.add_offset_to_pc(offset);
-        let new_addr = self.PC;
+        let new_addr = self.pc;
         self.branch_page_cross(old_addr, new_addr);
     }
 
     pub fn compare(&mut self, reg: u8, byte: u8) {
         if reg >= byte {
-            self.P |= CARRY_FLAG;
+            self.p |= CARRY_FLAG;
         } else {
-            self.P &= 0xFF - CARRY_FLAG;
+            self.p &= 0xFF - CARRY_FLAG;
         }
         self.set_zero_flag(if reg == byte {0} else {1});
         let diff = reg.wrapping_sub(byte);
@@ -68,29 +68,29 @@ impl super::Cpu {
     }
 
     pub fn pop(&mut self) -> u8 {
-        self.S = self.S.wrapping_add(1);
-        let byte = self.read(STACK_OFFSET + self.S as usize);
+        self.s = self.s.wrapping_add(1);
+        let byte = self.read(STACK_OFFSET + self.s as usize);
         byte
     }
 
     pub fn push(&mut self, byte: u8) {
-        self.write(STACK_OFFSET + self.S as usize, byte);
-        self.S = self.S.wrapping_sub(1);
+        self.write(STACK_OFFSET + self.s as usize, byte);
+        self.s = self.s.wrapping_sub(1);
     }
 
     pub fn set_negative_flag(&mut self, num: u8) {
         if num & 0x80 == 0x80 {
-            self.P |= NEGATIVE_FLAG;
+            self.p |= NEGATIVE_FLAG;
         } else {
-            self.P &= 0xFF - NEGATIVE_FLAG;
+            self.p &= 0xFF - NEGATIVE_FLAG;
         }
     }
 
     pub fn set_zero_flag(&mut self, num: u8) {
         if num == 0 {
-            self.P |= ZERO_FLAG;
+            self.p |= ZERO_FLAG;
         } else {
-            self.P &= 0xFF - ZERO_FLAG;
+            self.p &= 0xFF - ZERO_FLAG;
         }
     }
 

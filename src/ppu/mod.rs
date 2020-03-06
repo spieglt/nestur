@@ -27,10 +27,10 @@ pub struct Ppu {
     // Pictures on http://wiki.nesdev.com/w/index.php/Mirroring refer to them as A and B.
     // http://wiki.nesdev.com/w/index.php/MMC1 calls them higher and lower.
     // They can be mirrored at certain memory ranges.
-    nametable_A: Vec<u8>,
-    nametable_B: Vec<u8>,
-    nametable_C: Vec<u8>,
-    nametable_D: Vec<u8>,
+    nametable_a: Vec<u8>,
+    nametable_b: Vec<u8>,
+    nametable_c: Vec<u8>,
+    nametable_d: Vec<u8>,
 
     // The palette shared by both background and sprites.
     // Consists of 32 bytes, each of which represents an index into the global PALETTE_TABLE.
@@ -104,10 +104,10 @@ impl Ppu {
             x:                             0,
             w:                             0,
             mapper:                        mapper,
-            nametable_A:                   vec![0u8; 0x0400],
-            nametable_B:                   vec![0u8; 0x0400],
-            nametable_C:                   vec![0u8; 0x0400],
-            nametable_D:                   vec![0u8; 0x0400],
+            nametable_a:                   vec![0u8; 0x0400],
+            nametable_b:                   vec![0u8; 0x0400],
+            nametable_c:                   vec![0u8; 0x0400],
+            nametable_d:                   vec![0u8; 0x0400],
             palette_ram:                   vec![0u8; 0x0020],
             background_pattern_sr_low:     0,
             background_pattern_sr_high:    0,

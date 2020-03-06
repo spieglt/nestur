@@ -31,7 +31,7 @@ If the game is called `mygame.nes`, the save state files will be called `mygame-
 
 ## Use
 
-Double-click or run the executable from a terminal by itself to launch with instructions. Then click Ok and drag a (iNES/`.nes`) ROM file onto the window. Or, drag and drop a ROM file on to the executable to run it directly, or use the path to the ROM file as the first argument to the terminal command.
+Double-click or run the executable from a terminal by itself to launch with instructions. Then click Ok and drag a (iNES/`.nes`) ROM file onto the window. Or, drag and drop a ROM file onto the executable to run it directly, or use the path to the ROM file as the first argument to the terminal command.
 
 If the game uses battery-backed RAM (if it can save data when the console is turned off), a save file like `rom_filename.sav` will be created in the same folder as the ROM when the program is exited. When Nestur is run again, it will look for a file matching the ROM name, with a `.sav` extension instead of `.nes`.
 

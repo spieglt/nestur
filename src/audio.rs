@@ -1,4 +1,3 @@
-use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use sdl2::Sdl;
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
@@ -80,7 +79,7 @@ impl AudioCallback for ApuSampler {
                 *b = b.split_off(target);
             }
         } else {
-            // println!("buffer empty!"); // happens when the callback fires twice between video frames
+            println!("buffer empty!"); // happens when the callback fires twice between video frames
         }
     }
 }

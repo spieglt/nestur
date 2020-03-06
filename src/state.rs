@@ -3,7 +3,7 @@ use super::ppu;
 use super::apu;
 use super::cartridge;
 
-use std::fs::File;
+use std::fs::{DirEntry, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -70,24 +70,29 @@ pub fn find_next_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<P
     }
 }
 
-pub fn find_last_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
+pub fn find_last_save_state(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
     let path = filepath.parent()?;
     let stem = filepath.file_stem()?.to_str()?;
     let ext = new_ext.or(Some(filepath.extension()?.to_str()?)).unwrap();
     let files = std::fs::read_dir(path).expect("couldn't read directory");
     let mut save_states = files
-        .map(|f| f.unwrap().path() )
-        .filter(|p| {
-            let pfs = p.file_name().unwrap().to_str().unwrap();
-            pfs.len() >= stem.len()
-                && pfs.len() >= ext.len()
-                && &pfs[..stem.len()] == stem
-                && &pfs[pfs.len()-ext.len()..] == ext
+        .filter(|dir_entry| {
+            let os_name = dir_entry.as_ref().unwrap().file_name();
+            let name = os_name.to_str().unwrap();
+            name.len() >= stem.len()
+                && name.len() >= ext.len()
+                && &name[..stem.len()] == stem
+                && &name[name.len()-ext.len()..] == ext
         })
-        .collect::<Vec<PathBuf>>();
-    save_states.sort();
+        .collect::<Vec<std::io::Result<DirEntry>>>();
+    save_states.sort_by(|a, b| {
+        let a_mod_time = a.as_ref().unwrap().metadata().unwrap().modified().unwrap();
+        let b_mod_time = b.as_ref().unwrap().metadata().unwrap().modified().unwrap();
+        b_mod_time.cmp(&a_mod_time) // puts in reverse order by last modified time
+    });
+    println!("{:?}", save_states);
     match save_states.len() {
         0 => None,
-        _ => Some(save_states[save_states.len()-1].clone()),
+        _ => Some(save_states[0].as_ref().unwrap().path()),
     }
 }
