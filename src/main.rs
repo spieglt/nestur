@@ -71,7 +71,7 @@ fn main() -> Result<(), String> {
                             Err(e) => println!("{}", e),
                         }
                     },
-                    _ => (), // println!("event: {:?}", event),
+                    _ => (),
                 }
             }
             std::thread::sleep(Duration::from_millis(100));

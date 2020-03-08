@@ -90,7 +90,6 @@ pub fn find_last_save_state(filepath: &PathBuf, new_ext: Option<&str>) -> Option
         let b_mod_time = b.as_ref().unwrap().metadata().unwrap().modified().unwrap();
         b_mod_time.cmp(&a_mod_time) // puts in reverse order by last modified time
     });
-    println!("{:?}", save_states);
     match save_states.len() {
         0 => None,
         _ => Some(save_states[0].as_ref().unwrap().path()),
