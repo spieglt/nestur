@@ -135,9 +135,9 @@ impl Ppu {
             show_sprites_left:             false,
             show_background:               false,
             show_sprites:                  false,
-            emphasize_red:                 false, //
-            emphasize_green:               false, // TODO: implement these
-            emphasize_blue:                false, //
+            emphasize_red:                 false,
+            emphasize_green:               false,
+            emphasize_blue:                false,
             sprite_overflow:               false,
             sprite_zero_hit:               false,
             should_generate_nmi:           false,

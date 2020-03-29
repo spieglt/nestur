@@ -36,8 +36,8 @@ impl super::Ppu {
         self.show_background      = byte & (1<<3) != 0;
         self.show_sprites         = byte & (1<<4) != 0;
         self.emphasize_red        = byte & (1<<5) != 0;
-        self.emphasize_blue       = byte & (1<<6) != 0;
-        self.emphasize_green      = byte & (1<<7) != 0;
+        self.emphasize_green      = byte & (1<<6) != 0;
+        self.emphasize_blue       = byte & (1<<7) != 0;
     }
 
     // cpu reads ppu status from 0x2002, PPUSTATUS

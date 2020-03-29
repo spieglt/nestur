@@ -117,8 +117,22 @@ impl super::Ppu {
         }
         // let pixel = self.read(palette_address as usize) as usize;
         let pixel = self.palette_ram[palette_address as usize] as usize;
-        let color: (u8, u8, u8) = super::PALETTE_TABLE[pixel];
-
+        let mut color: (u8, u8, u8) = super::PALETTE_TABLE[pixel];
+        if self.emphasize_red {
+            color.0 = emphasize(&color.0);
+            color.1 = deemphasize(&color.1);
+            color.2 = deemphasize(&color.2);
+        }
+        if self.emphasize_green {
+            color.0 = deemphasize(&color.0);
+            color.1 = emphasize(&color.1);
+            color.2 = deemphasize(&color.2);
+        }
+        if self.emphasize_blue {
+            color.0 = deemphasize(&color.0);
+            color.1 = deemphasize(&color.1);
+            color.2 = emphasize(&color.2);
+        }
         (x,y,color)
     }
 
@@ -330,5 +344,21 @@ impl super::Ppu {
             self.nmi_delay = 1;
         }
         self.previous_nmi = nmi;
+    }
+}
+
+fn emphasize(byte: &u8) -> u8 {
+    if *byte < 200 {
+        byte + 55
+    } else {
+        255
+    }
+}
+
+fn deemphasize(byte: &u8) -> u8 {
+    if *byte > 55 {
+        byte - 55
+    } else {
+        0
     }
 }
