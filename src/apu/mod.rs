@@ -26,7 +26,7 @@ pub struct Apu {
     square2:  Square,
     triangle: Triangle,
     noise:    Noise,
-    dmc:      DMC,
+    pub dmc:  DMC,
 
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
@@ -62,14 +62,14 @@ impl Apu {
         }
     }
 
-    pub fn clock(&mut self) -> f32 {
+    pub fn clock(&mut self, sample_byte: u8) -> f32 {
         // Clock each channel
         self.square1.clock();
         self.square2.clock();
         self.triangle.clock();
         self.triangle.clock(); // hacky. clocking triangle twice because it runs every CPU cycle
         self.noise.clock();
-        self.dmc.clock();
+        self.dmc.clock(sample_byte);
 
         // Step frame counter if necessary
         if FRAME_COUNTER_STEPS.contains(&self.cycle) {
@@ -78,6 +78,15 @@ impl Apu {
         self.cycle += 1;
         if (self.frame_sequence == 4 && self.cycle == 14915) || self.cycle == 18641 {
             self.cycle = 0;
+        }
+
+        // Clock sampler if it's been the correct number of CPU cycles
+        if self.dmc.cpu_cycles_left == 0 {
+            self.dmc.clock(sample_byte);
+        }
+        self.dmc.cpu_cycles_left -= 2; // APU runs every other CPU cycle
+        if self.dmc.cpu_cycles_left == 0 {
+            self.dmc.cpu_cycles_left = dmc::SAMPLE_RATES[self.dmc.rate_index];
         }
 
         // Send all samples to buffer, let the SDL2 audio callback take what it needs
