@@ -188,12 +188,13 @@ impl Apu {
             self.dmc.enabled = true;
             // If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
             // If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
-            if self.dmc.bytes_remaining != 0 {
-                // TODO: how does dmc repeat?
+            if self.dmc.bytes_remaining == 0 {
+                self.dmc.current_address = self.dmc.sample_address;
+                self.dmc.bytes_remaining = self.dmc.sample_length;
             }
         } else {
             self.dmc.enabled = false;
-            self.dmc.length_counter = 0;
+            // self.dmc.length_counter = 0;
             // If the DMC bit is clear, the DMC bytes remaining will be set to 0 and the DMC will silence when it empties.
             self.dmc.bytes_remaining = 0;
         }

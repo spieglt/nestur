@@ -149,7 +149,7 @@ impl Cpu {
         //     1 cycle if it occurs on the second-last OAM DMA cycle.
         //     3 cycles if it occurs on the last OAM DMA cycle.
         if self.apu.dmc.cpu_stall {
-            self.delay = 3;
+            self.delay = 3; // TODO: not correct
             self.apu.dmc.cpu_stall = false;
         }
         

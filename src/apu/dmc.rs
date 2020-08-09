@@ -1,29 +1,27 @@
-
+// number of CPU cycles between sample output level being adjusted
 pub const SAMPLE_RATES: [u16; 16] = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54];
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct DMC {
-    pub sample: u16,
-    pub enabled: bool,
+    pub sample: u16, // "output value" that goes to the mixer
+    pub enabled: bool, // TODO: what does this do for the DMC channel?
     pub interrupt: bool,
-    pub loop_flag: bool,
+    loop_flag: bool,
     pub cpu_stall: bool,
-    pub rate_index: usize,
-    pub length_counter: usize,
-    pub cpu_cycles_left: u16,
+    rate_index: usize,
+    cpu_cycles_left: u16,
 
     // Memory reader
     sample_byte: u8, // passed in every APU clock cycle, need to think of a better way to read CPU from APU
     sample_buffer: Option<u8>, // buffer that the output unit draws into its shift register, wrapped in Option to denote 'emptiness'
-    sample_address: usize, // start of sample in memory
-    sample_length: usize,
+    pub sample_address: usize, // start of sample in memory
+    pub sample_length: usize, // number of bytes starting from sample_address that constitute the sample. each byte has 8 bits that can raise or lower the output level, at a speed determined by rate_index
     pub current_address: usize, // address of the next byte of the sample to play
     pub bytes_remaining: usize, // bytes left in the sample
 
     // Output unit
     shift_register: u8,
     bits_remaining: usize,
-    output_level: u8,
     silence: bool,
 }
 
@@ -36,7 +34,6 @@ impl DMC {
             loop_flag: false,
             cpu_stall: false,
             rate_index: 0,
-            length_counter: 0,
             cpu_cycles_left: 0,
             sample_byte: 0,
             sample_buffer: None,
@@ -46,7 +43,6 @@ impl DMC {
             bytes_remaining: 0,
             shift_register: 0,
             bits_remaining: 0,
-            output_level: 0,
             silence: false,
         }
     }
@@ -96,12 +92,16 @@ impl DMC {
         // leave the output level unchanged. This means subtract 2 only if the current level is at least 2, or add 2 only if the current level is at most 125.
         // The right shift register is clocked.
         // As stated above, the bits-remaining counter is decremented. If it becomes zero, a new output cycle is started.
+        self.cpu_cycles_left -= 2;
         if self.cpu_cycles_left == 0 {
             self.cpu_cycles_left = SAMPLE_RATES[self.rate_index];
-            if !self.silence {
+            if self.silence {
+                self.sample = 0;
+            } else {
                 match self.shift_register & 1 {
-                    0 => if self.output_level >= 2 { self.output_level -= 2},
-                    1 => if self.output_level <= 125 { self.output_level += 2 },
+                    0 => if self.sample >= 2 { self.sample -= 2},
+                    1 => if self.sample <= 125 { self.sample += 2 },
+                    _ => panic!("uh oh! magical bits!"),
                 }
             }
             self.shift_register >>= 1;
@@ -121,27 +121,29 @@ impl DMC {
                 }
             }
         }
-        self.cpu_cycles_left -= 2; // APU runs every other CPU cycle
-        if self.dmc.cpu_cycles_left == 0 {
-            self.dmc.cpu_cycles_left = dmc::SAMPLE_RATES[self.dmc.rate_index];
-        }
     }
-
 
     pub fn write_control(&mut self, value: u8) {
         // $4010 	IL--.RRRR 	Flags and Rate (write)
-        
+        self.interrupt = value & 0b1000_0000 != 0;
+        self.loop_flag = value & 0b0100_0000 != 0;
+        self.rate_index = value as usize & 0b0000_1111;
     }
    
     pub fn direct_load(&mut self, value: u8) {
-       
+        // $4011 	-DDD.DDDD 	Direct load (write)
+        self.sample = value as u16 & 0b0111_1111;
     }
    
     pub fn write_sample_address(&mut self, value: u8) {
-       
+        // $4012 	AAAA.AAAA 	Sample address (write)
+        // bits 7-0 	AAAA.AAAA 	Sample address = %11AAAAAA.AA000000 = $C000 + (A * 64)
+        self.sample_address = ((value as usize) << 6) + 0xC000;
     }
    
     pub fn write_sample_length(&mut self, value: u8) {
-       
+        // $4013 	LLLL.LLLL 	Sample length (write)
+        // bits 7-0 	LLLL.LLLL 	Sample length = %LLLL.LLLL0001 = (L * 16) + 1 bytes
+        self.sample_length = ((value as usize) << 4) + 1;
     }
 }
