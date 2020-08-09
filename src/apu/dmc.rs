@@ -5,6 +5,7 @@ pub const SAMPLE_RATES: [u16; 16] = [428, 380, 340, 320, 286, 254, 226, 214, 190
 pub struct DMC {
     pub sample: u16, // "output value" that goes to the mixer
     pub enabled: bool, // TODO: what does this do for the DMC channel?
+    irq_enabled: bool,
     pub interrupt: bool,
     loop_flag: bool,
     pub cpu_stall: bool,
@@ -30,6 +31,7 @@ impl DMC {
         DMC {
             sample: 0,
             enabled: false,
+            irq_enabled: false,
             interrupt: false,
             loop_flag: false,
             cpu_stall: false,
@@ -48,17 +50,11 @@ impl DMC {
     }
 
     pub fn clock(&mut self, sample_byte: u8) {
-        // self.sample_byte = sample_byte;
         self.clock_memory_reader(sample_byte);
         self.clock_output_unit();
     }
 
     fn clock_memory_reader(&mut self, sample_byte: u8) {
-        // When the sample buffer is emptied, the memory reader fills the sample buffer
-        // with the next byte from the currently playing sample. It has an address counter and a bytes remaining counter.
-        // if self.sample_buffer.is_none() {
-        //     self.sample_buffer = Some(sample_byte);
-        // }
         // When a sample is (re)started, the current address is set to the sample address, and bytes remaining is set to the sample length.
         if self.bytes_remaining == 0 && self.loop_flag {
             self.current_address = self.sample_address;
@@ -78,11 +74,12 @@ impl DMC {
             } else {
                 self.current_address += 1;
             }
-            // The bytes remaining counter is decremented; if it becomes zero and the loop flag is set, the sample is restarted (see above); otherwise, if the bytes remaining counter becomes zero and the IRQ enabled flag is set, the interrupt flag is set.
+            // The bytes remaining counter is decremented; if it becomes zero and the loop flag is set, the sample is restarted (see above);
+            // otherwise, if the bytes remaining counter becomes zero and the IRQ enabled flag is set, the interrupt flag is set.
             self.bytes_remaining -= 1;
+        } else if self.sample_buffer.is_none() && self.irq_enabled {
+            self.interrupt = true;
         }
-        // At any time, if the interrupt flag is set, the CPU's IRQ line is continuously asserted until the interrupt flag is cleared.
-        // The processor will continue on from where it was stalled.
     }
 
     fn clock_output_unit(&mut self) {
@@ -125,7 +122,10 @@ impl DMC {
 
     pub fn write_control(&mut self, value: u8) {
         // $4010 	IL--.RRRR 	Flags and Rate (write)
-        self.interrupt = value & 0b1000_0000 != 0;
+        self.irq_enabled = value & 0b1000_0000 != 0;
+        if !self.irq_enabled {
+            self.interrupt = false;
+        }
         self.loop_flag = value & 0b0100_0000 != 0;
         self.rate_index = value as usize & 0b0000_1111;
     }

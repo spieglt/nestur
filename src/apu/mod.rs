@@ -194,7 +194,6 @@ impl Apu {
             }
         } else {
             self.dmc.enabled = false;
-            // self.dmc.length_counter = 0;
             // If the DMC bit is clear, the DMC bytes remaining will be set to 0 and the DMC will silence when it empties.
             self.dmc.bytes_remaining = 0;
         }
