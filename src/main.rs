@@ -136,7 +136,9 @@ fn run_game(
             }
         }
         for _ in 0..apu_cycles {
-            temp_buffer.push(cpu.apu.clock());
+            // can't read CPU from APU so have to pass byte in here
+            let sample_byte = cpu.read(cpu.apu.dmc.current_address);
+            temp_buffer.push(cpu.apu.clock(sample_byte));
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
@@ -249,7 +251,6 @@ Up/Down/Left/Right: arrow keys
 /*
 
 TODO:
-- DMC audio channel
 - untangle CPU and APU/PPU?
 - better save file organization?
 

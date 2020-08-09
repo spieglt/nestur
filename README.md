@@ -51,9 +51,11 @@ If the game uses battery-backed RAM (if it can save data when the console is tur
 
 ## To do
 
-- DMC audio channel
-
 - support other controllers?
+
+- more mappers?
+
+- better save file organization?
 
 ## Known problem games
 

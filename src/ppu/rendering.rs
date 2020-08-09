@@ -330,7 +330,7 @@ impl super::Ppu {
     }
 
     pub fn rendering(&self) -> bool {
-        (self.show_background || self.show_sprites)
+        self.show_background || self.show_sprites
     }
 
     pub fn y_in_range(&self, y_coord: u8) -> bool {

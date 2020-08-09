@@ -26,7 +26,7 @@ pub struct Apu {
     square2:  Square,
     triangle: Triangle,
     noise:    Noise,
-    dmc:      DMC,
+    pub dmc:  DMC,
 
     square_table: Vec<f32>,
     tnd_table: Vec<f32>,
@@ -62,14 +62,14 @@ impl Apu {
         }
     }
 
-    pub fn clock(&mut self) -> f32 {
+    pub fn clock(&mut self, sample_byte: u8) -> f32 {
         // Clock each channel
         self.square1.clock();
         self.square2.clock();
         self.triangle.clock();
         self.triangle.clock(); // hacky. clocking triangle twice because it runs every CPU cycle
         self.noise.clock();
-        self.dmc.clock();
+        self.dmc.clock(sample_byte);
 
         // Step frame counter if necessary
         if FRAME_COUNTER_STEPS.contains(&self.cycle) {
@@ -188,12 +188,12 @@ impl Apu {
             self.dmc.enabled = true;
             // If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
             // If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
-            if self.dmc.bytes_remaining != 0 {
-                // TODO: how does dmc repeat?
+            if self.dmc.bytes_remaining == 0 {
+                self.dmc.current_address = self.dmc.sample_address;
+                self.dmc.bytes_remaining = self.dmc.sample_length;
             }
         } else {
             self.dmc.enabled = false;
-            self.dmc.length_counter = 0;
             // If the DMC bit is clear, the DMC bytes remaining will be set to 0 and the DMC will silence when it empties.
             self.dmc.bytes_remaining = 0;
         }

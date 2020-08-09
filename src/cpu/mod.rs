@@ -139,28 +139,27 @@ impl Cpu {
 
     pub fn step(&mut self) -> u64 {
 
+        // The CPU is stalled for up to 4 CPU cycles to allow the longest possible write (the return address and write after an IRQ) to finish.
+        // If OAM DMA is in progress, it is paused for two cycles. The sample fetch always occurs on an even CPU cycle due to its alignment with the APU.
+        // Specific delay cases:
+        //     4 cycles if it falls on a CPU read cycle.
+        //     3 cycles if it falls on a single CPU write cycle (or the second write of a double CPU write).
+        //     4 cycles if it falls on the first write of a double CPU write cycle.[4]
+        //     2 cycles if it occurs during an OAM DMA, or on the $4014 write cycle that triggers the OAM DMA.
+        //     1 cycle if it occurs on the second-last OAM DMA cycle.
+        //     3 cycles if it occurs on the last OAM DMA cycle.
+        if self.apu.dmc.cpu_stall {
+            self.delay = 3; // TODO: not correct
+            self.apu.dmc.cpu_stall = false;
+        }
+        
         // skip cycles from OAM DMA if necessary
         if self.delay > 0 {
             self.delay -= 1;
             return 1;
         }
 
-        // handle interrupts from ppu
-        if self.ppu.trigger_nmi {
-            self.nmi();
-        }
-        self.ppu.trigger_nmi = false;
-        // and apu
-        if self.apu.trigger_irq && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
-            self.irq();
-        }
-        self.apu.trigger_irq = false;
-        // and mapper MMC3
-        if self.mapper.borrow_mut().check_irq() && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
-            self.irq();
-        }
-        // TODO: should checks for APU and MMC3 IRQs be combined and acknowledged together?
-
+        self.handle_interrupts();
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
@@ -260,6 +259,30 @@ impl Cpu {
                 self.delay = 513 + if is_odd {1} else {0};
             },
             _ => panic!("wrote to bad ppu reg: {}", reg_num),
+        }
+    }
+
+    fn handle_interrupts(&mut self) {
+        // handle interrupts from ppu
+        if self.ppu.trigger_nmi {
+            self.nmi();
+        }
+        self.ppu.trigger_nmi = false;
+        // and apu
+        if self.apu.trigger_irq && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
+            self.irq();
+        }
+        self.apu.trigger_irq = false;
+        // and mapper MMC3
+        if self.mapper.borrow_mut().check_irq() && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
+            self.irq();
+        }
+        // TODO: should checks for APU and MMC3 IRQs be combined and acknowledged together?
+        
+        // At any time, if the interrupt flag is set, the CPU's IRQ line is continuously asserted until the interrupt flag is cleared.
+        // The processor will continue on from where it was stalled.
+        if self.apu.dmc.interrupt {
+            self.irq();
         }
     }
 
