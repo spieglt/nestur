@@ -251,7 +251,6 @@ Up/Down/Left/Right: arrow keys
 /*
 
 TODO:
-- DMC audio channel
 - untangle CPU and APU/PPU?
 - better save file organization?
 
