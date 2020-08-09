@@ -80,15 +80,6 @@ impl Apu {
             self.cycle = 0;
         }
 
-        // Clock sampler if it's been the correct number of CPU cycles
-        if self.dmc.cpu_cycles_left == 0 {
-            self.dmc.clock(sample_byte);
-        }
-        self.dmc.cpu_cycles_left -= 2; // APU runs every other CPU cycle
-        if self.dmc.cpu_cycles_left == 0 {
-            self.dmc.cpu_cycles_left = dmc::SAMPLE_RATES[self.dmc.rate_index];
-        }
-
         // Send all samples to buffer, let the SDL2 audio callback take what it needs
         self.mix()
     }
