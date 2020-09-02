@@ -4,7 +4,7 @@ pub const SAMPLE_RATES: [u16; 16] = [428, 380, 340, 320, 286, 254, 226, 214, 190
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct DMC {
     pub sample: u16, // "output value" that goes to the mixer
-    pub enabled: bool, // TODO: what does this do for the DMC channel?
+    pub enabled: bool,
     irq_enabled: bool,
     pub interrupt: bool,
     loop_flag: bool,
@@ -23,7 +23,6 @@ pub struct DMC {
     // Output unit
     shift_register: u8,
     bits_remaining: usize,
-    silence: bool,
 }
 
 impl DMC {
@@ -45,7 +44,6 @@ impl DMC {
             bytes_remaining: 0,
             shift_register: 0,
             bits_remaining: 0,
-            silence: false,
         }
     }
 
@@ -92,14 +90,14 @@ impl DMC {
         self.cpu_cycles_left -= 2;
         if self.cpu_cycles_left == 0 {
             self.cpu_cycles_left = SAMPLE_RATES[self.rate_index];
-            if self.silence {
-                self.sample = 0;
-            } else {
+            if self.enabled {
                 match self.shift_register & 1 {
                     0 => if self.sample >= 2 { self.sample -= 2},
                     1 => if self.sample <= 125 { self.sample += 2 },
                     _ => panic!("uh oh! magical bits!"),
                 }
+            } else {
+                self.sample = 0;
             }
             self.shift_register >>= 1;
             self.bits_remaining -= 1;
@@ -110,11 +108,11 @@ impl DMC {
                 self.bits_remaining = 8;
                 match self.sample_buffer {
                     Some(s) => {
-                        self.silence = false;
+                        self.enabled = true;
                         self.shift_register = s;
                         self.sample_buffer = None;
                     },
-                    None => self.silence = true,
+                    None => self.enabled = false,
                 }
             }
         }
