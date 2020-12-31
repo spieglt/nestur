@@ -48,8 +48,10 @@ impl DMC {
     }
 
     pub fn clock(&mut self, sample_byte: u8) {
-        self.clock_memory_reader(sample_byte);
-        self.clock_output_unit();
+        if self.enabled {
+            self.clock_memory_reader(sample_byte);
+            self.clock_output_unit();
+        }
     }
 
     fn clock_memory_reader(&mut self, sample_byte: u8) {
@@ -87,7 +89,9 @@ impl DMC {
         // leave the output level unchanged. This means subtract 2 only if the current level is at least 2, or add 2 only if the current level is at most 125.
         // The right shift register is clocked.
         // As stated above, the bits-remaining counter is decremented. If it becomes zero, a new output cycle is started.
-        self.cpu_cycles_left -= 2;
+        if self.cpu_cycles_left > 0 {
+            self.cpu_cycles_left -= 2;
+        }
         if self.cpu_cycles_left == 0 {
             self.cpu_cycles_left = SAMPLE_RATES[self.rate_index];
             if self.enabled {
@@ -100,7 +104,9 @@ impl DMC {
                 self.sample = 0;
             }
             self.shift_register >>= 1;
-            self.bits_remaining -= 1;
+            if self.bits_remaining > 0 {
+                self.bits_remaining -= 1;
+            }
             // When an output cycle ends, a new cycle is started as follows:
             // The bits-remaining counter is loaded with 8.
             // If the sample buffer is empty, then the silence flag is set; otherwise, the silence flag is cleared and the sample buffer is emptied into the shift register.
