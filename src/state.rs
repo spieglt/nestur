@@ -55,7 +55,10 @@ pub fn load_state(cpu: &mut cpu::Cpu, save_file: &PathBuf) -> Result<(), String>
 }
 
 pub fn find_next_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
-    let path = filepath.parent()?.to_str()?;
+    let path = match filepath.parent()?.to_str()? {
+        "" => ".",
+        x => x,
+    };
     let stem = filepath.file_stem()?.to_str()?;
     let ext = new_ext.or(Some(filepath.extension()?.to_str()?)).unwrap();
     let sep = std::path::MAIN_SEPARATOR.to_string();
@@ -71,7 +74,10 @@ pub fn find_next_filename(filepath: &PathBuf, new_ext: Option<&str>) -> Option<P
 }
 
 pub fn find_last_save_state(filepath: &PathBuf, new_ext: Option<&str>) -> Option<PathBuf> {
-    let path = filepath.parent()?;
+    let path = match filepath.parent()?.to_str()? {
+        "" => Path::new("."),
+        _ => filepath.parent()?,
+    };
     let stem = filepath.file_stem()?.to_str()?;
     let ext = new_ext.or(Some(filepath.extension()?.to_str()?)).unwrap();
     let files = std::fs::read_dir(path).expect("couldn't read directory");
