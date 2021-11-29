@@ -23,7 +23,7 @@ const DECIMAL_FLAG: u8           = 1 << 3;
 const OVERFLOW_FLAG: u8          = 1 << 6;
 const NEGATIVE_FLAG: u8          = 1 << 7;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum Mode {
     ABS, ABX, ABY, ACC,
     IMM, IMP, IDX, IND,
@@ -234,7 +234,7 @@ impl Cpu {
             2 => self.ppu.read_status(),
             4 => self.ppu.read_oam_data(),
             7 => self.ppu.read_data(),
-            _ => 0,
+            _ => self.ppu.recent_bits,
         }
     }
 

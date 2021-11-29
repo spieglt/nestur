@@ -244,11 +244,15 @@ impl super::Cpu {
     }
 
     pub fn jmp(&mut self, _address: usize, _mode: Mode) {
+        if _mode == Mode::ABS {
+            self.clock -= 1; // this only takes 3..
+        }
         self.pc = _address;
     }
 
     pub fn jsr(&mut self, _address: usize, _mode: Mode) {
         // call to absolute already advances program counter by 3
+        self.clock += 2;
         let minus1 = self.pc - 1; // so m1 is the last _byte of the jsr instruction. second _byte of the operand.
         self.push((minus1 >> 8) as u8);
         self.push((minus1 & 0xFF) as u8);
@@ -417,7 +421,7 @@ impl super::Cpu {
         self.plp(_address, _mode); // pull and set status reg (2 clock cycles)
         self.pc = self.pop() as usize; // low byte
         self.pc += (self.pop() as usize) << 8; // high byte
-        self.clock += 4;
+        self.clock += 2; // +2 from implied
     }
 
     pub fn rts(&mut self, _address: usize, _mode: Mode) {
@@ -483,6 +487,17 @@ impl super::Cpu {
     }
 
     pub fn sta(&mut self, _address: usize, _mode: Mode) {
+        // PPU Test 17
+        // STA, $2000,Y **must** issue a dummy read to 2007
+        if _address == 0x2007 && _mode == ABY && self.y == 7 {
+            self.read(0x2007);
+        }
+
+        if _mode == Mode::INX {
+            self.clock = self.before_clock+6; // Special
+        } else if _mode == Mode::ABY {
+            self.clock = self.before_clock+5; // Specia
+        }
         self.write(_address, self.a);
     }
 
