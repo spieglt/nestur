@@ -159,10 +159,13 @@ impl Cpu {
             return 1;
         }
 
-        self.handle_interrupts();
-
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
+
+        // interrupts happen after clock is backed up because they advance it
+        self.handle_interrupts();
+
+        // read program counter
         let opcode = <usize>::from(self.read(self.pc));
 
         // get addressing mode

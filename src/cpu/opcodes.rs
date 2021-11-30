@@ -421,7 +421,7 @@ impl super::Cpu {
         self.plp(_address, _mode); // pull and set status reg (2 clock cycles)
         self.pc = self.pop() as usize; // low byte
         self.pc += (self.pop() as usize) << 8; // high byte
-        self.clock += 2; // +2 from implied
+        // self.clock += 2; // +2 from implied
     }
 
     pub fn rts(&mut self, _address: usize, _mode: Mode) {
@@ -489,14 +489,14 @@ impl super::Cpu {
     pub fn sta(&mut self, _address: usize, _mode: Mode) {
         // PPU Test 17
         // STA, $2000,Y **must** issue a dummy read to 2007
-        if _address == 0x2007 && _mode == ABY && self.y == 7 {
+        if _address == 0x2007 && _mode == Mode::ABY && self.y == 7 {
             self.read(0x2007);
         }
 
         if _mode == Mode::INX {
-            self.clock = self.before_clock+6; // Special
+            self.clock += 4; // Special
         } else if _mode == Mode::ABY {
-            self.clock = self.before_clock+5; // Specia
+            self.clock += 3; // Special
         }
         self.write(_address, self.a);
     }
