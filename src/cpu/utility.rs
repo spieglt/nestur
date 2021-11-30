@@ -36,13 +36,13 @@ impl super::Cpu {
     }
 
     pub fn address_page_cross(&mut self, old_address: usize, new_address: usize) {
-        if old_address / 0xFF != new_address / 0xFF {
+        if old_address >> 8 != new_address >> 8 {
             self.clock += 1;
         }
     }
 
     pub fn branch_page_cross(&mut self, old_address: usize, new_address: usize) {
-        if old_address / 0xFF != new_address / 0xFF {
+        if old_address >> 8 != new_address >> 8 {
             self.clock += 1;
         }
     }

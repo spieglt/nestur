@@ -421,7 +421,7 @@ impl super::Cpu {
         self.plp(_address, _mode); // pull and set status reg (2 clock cycles)
         self.pc = self.pop() as usize; // low byte
         self.pc += (self.pop() as usize) << 8; // high byte
-        // self.clock += 2; // +2 from implied
+        self.clock += 2; // +2 from implied
     }
 
     pub fn rts(&mut self, _address: usize, _mode: Mode) {
@@ -494,9 +494,9 @@ impl super::Cpu {
         }
 
         if _mode == Mode::INX {
-            self.clock += 4; // Special
+            self.clock += 1; // Special
         } else if _mode == Mode::ABY {
-            self.clock += 3; // Special
+            self.clock += 1; // Special
         }
         self.write(_address, self.a);
     }
