@@ -494,9 +494,9 @@ impl super::Cpu {
         }
 
         if _mode == Mode::INY {
-            self.clock += 1; // Special
+            self.clock = self.before_clock + 6; // Special
         } else if _mode == Mode::ABY {
-            self.clock += 1; // Special
+            self.clock = self.before_clock + 5; // Special
         }
         self.write(_address, self.a);
     }

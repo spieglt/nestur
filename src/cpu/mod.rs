@@ -64,6 +64,7 @@ pub struct Cpu {
 
     clock: u64, // number of ticks in current cycle
     delay: usize, // for skipping cycles during OAM DMA
+    before_clock: u64,
 
     pub mapper: Rc<RefCell<dyn Mapper>>, // cartridge data
     pub ppu: super::Ppu,
@@ -88,6 +89,7 @@ impl Cpu {
             p: 0x24,
             clock: 0,
             delay: 0,
+            before_clock: 0,
             mapper: mapper,
             ppu: ppu,
             apu: apu,
@@ -161,6 +163,7 @@ impl Cpu {
 
         // back up clock so we know how many cycles we complete
         let clock = self.clock;
+        self.before_clock = self.clock;
 
         // interrupts happen after clock is backed up because they advance it
         self.handle_interrupts();
