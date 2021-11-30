@@ -12,7 +12,7 @@ impl super::Cpu {
             Mode::IMP => 1,
             Mode::IDX => 2,
             Mode::IND => 3,
-            Mode::INX => 2,
+            Mode::INY => 2,
             Mode::REL => 2,
             Mode::ZPG => 2,
             Mode::ZPX => 2,

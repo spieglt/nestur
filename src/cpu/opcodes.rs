@@ -493,7 +493,7 @@ impl super::Cpu {
             self.read(0x2007);
         }
 
-        if _mode == Mode::INX {
+        if _mode == Mode::INY {
             self.clock += 1; // Special
         } else if _mode == Mode::ABY {
             self.clock += 1; // Special

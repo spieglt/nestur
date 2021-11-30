@@ -27,7 +27,7 @@ const NEGATIVE_FLAG: u8          = 1 << 7;
 pub enum Mode {
     ABS, ABX, ABY, ACC,
     IMM, IMP, IDX, IND,
-    INX, REL, ZPG, ZPX,
+    INY, REL, ZPG, ZPX,
     ZPY,
 }
 
@@ -44,7 +44,7 @@ impl Mode {
             Mode::IMP => (Cpu::implied, 1),
             Mode::IDX => (Cpu::indexed_indirect, 2),
             Mode::IND => (Cpu::indirect, 3),
-            Mode::INX => (Cpu::indirect_indexed, 2),
+            Mode::INY => (Cpu::indirect_indexed, 2),
             Mode::REL => (Cpu::relative, 2),
             Mode::ZPG => (Cpu::zero_page, 2),
             Mode::ZPX => (Cpu::zero_page_x, 2),
@@ -116,21 +116,21 @@ impl Cpu {
             mode_table: vec![
         //          00         01         02         03         04         05         06         07         08         09         0A         0B         0C         0D         0E         0F
         /*00*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*00*/
-        /*10*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*10*/
+        /*10*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*10*/
         /*20*/  Mode::ABS, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*20*/
-        /*30*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*30*/
+        /*30*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*30*/
         /*40*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*40*/
-        /*50*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*50*/
+        /*50*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*50*/
         /*60*/  Mode::IMP, Mode::IDX, Mode::IMP, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::ACC, Mode::IMM, Mode::IND, Mode::ABS, Mode::ABS, Mode::ABS,  /*60*/
-        /*70*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*70*/
+        /*70*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*70*/
         /*80*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*80*/
-        /*90*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*90*/
+        /*90*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*90*/
         /*A0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*A0*/
-        /*B0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*B0*/
+        /*B0*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPY, Mode::ZPY, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABY, Mode::ABY,  /*B0*/
         /*C0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*C0*/
-        /*D0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*D0*/
+        /*D0*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*D0*/
         /*E0*/  Mode::IMM, Mode::IDX, Mode::IMM, Mode::IDX, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::ZPG, Mode::IMP, Mode::IMM, Mode::IMP, Mode::IMM, Mode::ABS, Mode::ABS, Mode::ABS, Mode::ABS,  /*E0*/
-        /*F0*/  Mode::REL, Mode::INX, Mode::IMP, Mode::INX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*F0*/
+        /*F0*/  Mode::REL, Mode::INY, Mode::IMP, Mode::INY, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::ZPX, Mode::IMP, Mode::ABY, Mode::IMP, Mode::ABY, Mode::ABX, Mode::ABX, Mode::ABX, Mode::ABX,  /*F0*/
             ],
         };
         cpu.pc = ((cpu.read(RESET_VECTOR + 1) as usize) << 8) + cpu.read(RESET_VECTOR) as usize;
@@ -356,7 +356,7 @@ const _OPCODE_DISPLAY_NAMES: [&str; 256] = [
     "BNE", "CMP", "BAD", "DCP", "NOP", "CMP", "DEC", "DCP",
     "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
     "CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC",
-    "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
+    "INY", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
     "BEQ", "SBC", "BAD", "ISC", "NOP", "SBC", "INC", "ISC",
     "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC",
 ];
