@@ -120,6 +120,7 @@ fn run_game(
     //~ let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
+    let mut fps_counter = 0; // used to only check time every so many cycles
 
     PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -177,12 +178,17 @@ fn run_game(
             None => (),
         };
         // calculate fps
-        //~ let now = Instant::now();
-        //~ if now > fps_timer + Duration::from_secs(1) {
-            //~ println!("frames per second: {}", fps);
-            //~ fps = 0;
-            //~ fps_timer = now;
-        //~ }
+        if fps_counter == 999 {
+            let now = Instant::now();
+            if now > fps_timer + Duration::from_secs(1) {
+                println!("frames per second: {}", fps);
+                fps = 0;
+                fps_timer = now;
+            }
+            fps_counter = 0;
+        } else {
+            fps_counter += 1;
+        }
     }
     PROFILER.lock().unwrap().stop().unwrap();
     mapper.borrow().save_battery_backed_ram();
