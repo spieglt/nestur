@@ -28,7 +28,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
 use sdl2::messagebox::*;
 
-// use cpuprofiler::PROFILER;
+use cpuprofiler::PROFILER;
 
 enum GameExitMode {
     QuitApplication,
@@ -117,11 +117,11 @@ fn run_game(
     let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
 
     // For throttling to 60 FPS
-    let mut timer = Instant::now();
+    //~ let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
 
-    // PROFILER.lock().unwrap().start("./main.profile").unwrap();
+    PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
         // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
         let cpu_cycles = cpu.step();
@@ -156,12 +156,12 @@ fn run_game(
                     audio_started = true;
                     audio_device.resume();
                 }
-                let now = Instant::now();
-                // if we're running faster than 60Hz, kill time
-                if now < timer + Duration::from_millis(1000/60) {
-                    std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
-                }
-                timer = Instant::now();
+                //~ let now = Instant::now();
+                //~ // if we're running faster than 60Hz, kill time
+                //~ if now < timer + Duration::from_millis(1000/60) {
+                    //~ std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
+                //~ }
+                //~ timer = Instant::now();
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
@@ -177,14 +177,14 @@ fn run_game(
             None => (),
         };
         // calculate fps
-        let now = Instant::now();
-        if now > fps_timer + Duration::from_secs(1) {
-            println!("frames per second: {}", fps);
-            fps = 0;
-            fps_timer = now;
-        }
+        //~ let now = Instant::now();
+        //~ if now > fps_timer + Duration::from_secs(1) {
+            //~ println!("frames per second: {}", fps);
+            //~ fps = 0;
+            //~ fps_timer = now;
+        //~ }
     }
-    // PROFILER.lock().unwrap().stop().unwrap();
+    PROFILER.lock().unwrap().stop().unwrap();
     mapper.borrow().save_battery_backed_ram();
     Ok(None)
 }

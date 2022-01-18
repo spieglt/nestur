@@ -78,7 +78,7 @@ impl super::Ppu {
         self.high_pattern_table_byte = self.read(address + 8);
     }
 
-    pub fn render_pixel(&mut self) -> (usize, usize, (u8, u8, u8)) {
+    pub fn render_pixel(&mut self) -> (usize, usize, [u8; 3]) {
         let (x, y) = (self.line_cycle - 1, self.scanline);
         let mut background_pixel = self.select_background_pixel();
         let (mut sprite_pixel, current_sprite) = self.select_sprite_pixel();
@@ -117,21 +117,21 @@ impl super::Ppu {
         }
         // let pixel = self.read(palette_address as usize) as usize;
         let pixel = self.palette_ram[palette_address as usize] as usize;
-        let mut color: (u8, u8, u8) = super::PALETTE_TABLE[pixel];
+        let mut color: [u8; 3] = super::PALETTE_TABLE[pixel];
         if self.emphasize_red {
-            color.0 = emphasize(&color.0);
-            color.1 = deemphasize(&color.1);
-            color.2 = deemphasize(&color.2);
+            color[0] = emphasize(&color[0]);
+            color[1] = deemphasize(&color[1]);
+            color[2] = deemphasize(&color[2]);
         }
         if self.emphasize_green {
-            color.0 = deemphasize(&color.0);
-            color.1 = emphasize(&color.1);
-            color.2 = deemphasize(&color.2);
+            color[0] = deemphasize(&color[0]);
+            color[1] = emphasize(&color[1]);
+            color[2] = deemphasize(&color[2]);
         }
         if self.emphasize_blue {
-            color.0 = deemphasize(&color.0);
-            color.1 = deemphasize(&color.1);
-            color.2 = emphasize(&color.2);
+            color[0] = deemphasize(&color[0]);
+            color[1] = deemphasize(&color[1]);
+            color[2] = emphasize(&color[2]);
         }
         (x,y,color)
     }
@@ -176,9 +176,7 @@ impl super::Ppu {
                     self.sprite_pattern_table_srs[i].0 <<= 1;
                     self.sprite_pattern_table_srs[i].1 <<= 1;
                 }
-            }
-            // Every cycle, the 8 x-position counters for the sprites are decremented by one.
-            for i in 0..self.num_sprites {
+                // Every cycle, the 8 x-position counters for the sprites are decremented by one.
                 if self.sprite_counters[i] > 0 {
                     self.sprite_counters[i] -= 1;
                 }
