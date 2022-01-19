@@ -28,7 +28,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
 use sdl2::messagebox::*;
 
-use cpuprofiler::PROFILER;
+// use cpuprofiler::PROFILER;
 
 enum GameExitMode {
     QuitApplication,
@@ -120,7 +120,7 @@ fn run_game(
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
 
-    PROFILER.lock().unwrap().start("./main.profile").unwrap();
+    // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
         // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
         let cpu_cycles = cpu.step();
@@ -188,7 +188,7 @@ fn run_game(
             timer_counter += 1;
         }
     }
-    PROFILER.lock().unwrap().stop().unwrap();
+    // PROFILER.lock().unwrap().stop().unwrap();
     mapper.borrow().save_battery_backed_ram();
     Ok(None)
 }
