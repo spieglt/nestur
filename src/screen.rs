@@ -17,7 +17,8 @@ pub fn init_window(context: &Sdl) -> Result<(Canvas<Window>, TextureCreator<Wind
         .build()
         .map_err(|e| e.to_string())?;
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
-    canvas.set_logical_size(256, 240);
+    canvas.set_logical_size(256, 240)
+        .map_err(|e| e.to_string())?;
     let texture_creator = canvas.texture_creator();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
@@ -31,7 +32,8 @@ pub fn draw_pixel(buffer: &mut Vec<u8>, x: usize, y: usize, color: RGBColor) {
 }
 
 pub fn draw_to_window(texture: &mut Texture, canvas: &mut Canvas<Window>, buffer: &Vec<u8>) -> Result<(), String> {
-    texture.update(None, &buffer, 256*3);
+    texture.update(None, &buffer, 256*3)
+        .map_err(|e| e.to_string())?;
     canvas.copy(&texture, None, None)?;
     canvas.present();
     Ok(())
