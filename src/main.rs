@@ -43,11 +43,9 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
     let (mut canvas, texture_creator) = init_window(&sdl_context).expect("Could not create window");
     let mut texture = texture_creator.create_texture_streaming(
-        PixelFormatEnum::RGB24, 256*screen::SCALE_FACTOR as u32, 240*screen::SCALE_FACTOR as u32)
+        PixelFormatEnum::RGB24, 256 as u32, 240 as u32)
         .map_err(|e| e.to_string())?;
-    let byte_width = 256 * 3 * screen::SCALE_FACTOR; // 256 NES pixels, 3 bytes for each pixel (RGB 24-bit), and NES-to-SDL scale factor
-    let byte_height = 240 * screen::SCALE_FACTOR; // NES image is 240 pixels tall, multiply by scale factor for total number of rows needed
-    let mut screen_buffer = vec![0; byte_width * byte_height]; // contains raw RGB data for the screen
+    let mut screen_buffer = vec![0; 256 * 240 * 3]; // contains raw RGB data for the screen
 
     let argv = std::env::args().collect::<Vec<String>>();
     let mut filename = if argv.len() > 1 {
@@ -120,6 +118,7 @@ fn run_game(
     let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
+    let mut timer_counter = 0; // used to only check time every so many cycles
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -177,11 +176,16 @@ fn run_game(
             None => (),
         };
         // calculate fps
-        let now = Instant::now();
-        if now > fps_timer + Duration::from_secs(1) {
-            println!("frames per second: {}", fps);
-            fps = 0;
-            fps_timer = now;
+        if timer_counter == 999 {
+            let now = Instant::now();
+            if now > fps_timer + Duration::from_secs(1) {
+                println!("frames per second: {}", fps);
+                fps = 0;
+                fps_timer = now;
+            }
+            timer_counter = 0;
+        } else {
+            timer_counter += 1;
         }
     }
     // PROFILER.lock().unwrap().stop().unwrap();
