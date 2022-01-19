@@ -115,10 +115,10 @@ fn run_game(
     let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
 
     // For throttling to 60 FPS
-    //~ let mut timer = Instant::now();
+    let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
-    let mut fps_counter = 0; // used to only check time every so many cycles
+    let mut timer_counter = 0; // used to only check time every so many cycles
 
     PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
@@ -155,12 +155,12 @@ fn run_game(
                     audio_started = true;
                     audio_device.resume();
                 }
-                //~ let now = Instant::now();
-                //~ // if we're running faster than 60Hz, kill time
-                //~ if now < timer + Duration::from_millis(1000/60) {
-                    //~ std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
-                //~ }
-                //~ timer = Instant::now();
+                let now = Instant::now();
+                // if we're running faster than 60Hz, kill time
+                if now < timer + Duration::from_millis(1000/60) {
+                    std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
+                }
+                timer = Instant::now();
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
@@ -176,16 +176,16 @@ fn run_game(
             None => (),
         };
         // calculate fps
-        if fps_counter == 999 {
+        if timer_counter == 999 {
             let now = Instant::now();
             if now > fps_timer + Duration::from_secs(1) {
                 println!("frames per second: {}", fps);
                 fps = 0;
                 fps_timer = now;
             }
-            fps_counter = 0;
+            timer_counter = 0;
         } else {
-            fps_counter += 1;
+            timer_counter += 1;
         }
     }
     PROFILER.lock().unwrap().stop().unwrap();
