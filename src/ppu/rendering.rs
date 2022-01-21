@@ -174,12 +174,12 @@ impl super::Ppu {
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
+                        secondary_index = i;
                         let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
                         let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
-                        if !(low_bit == 0 && high_bit == 0) {
+                        if !(lb == 0 && hb == 0) {
                             low_bit  = lb;
                             high_bit = hb;
-                            secondary_index = i;
                             frozen = true;
                         }
                     }

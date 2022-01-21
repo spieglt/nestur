@@ -23,15 +23,7 @@ pub fn init_window(context: &Sdl) -> Result<(Canvas<Window>, TextureCreator<Wind
     canvas.present();
     Ok((canvas, texture_creator))
 }
-/*
-pub fn draw_pixel(buffer: &mut Vec<u8>, x: usize, y: usize, color: RGBColor) {
-    let offset = (y * 3 * 256) + (x * 3);
-    // buffer.splice(offset..(offset+3), color);
-    buffer[offset] = color[0];
-    buffer[offset+1] = color[1];
-    buffer[offset+2] = color[2];
-}
-*/
+
 pub fn draw_to_window(texture: &mut Texture, canvas: &mut Canvas<Window>, buffer: &Vec<u8>) -> Result<(), String> {
     texture.update(None, &buffer, 256*3)
         .map_err(|e| e.to_string())?;
@@ -39,3 +31,4 @@ pub fn draw_to_window(texture: &mut Texture, canvas: &mut Canvas<Window>, buffer
     canvas.present();
     Ok(())
 }
+

@@ -167,56 +167,58 @@ impl Ppu {
         let rendering = self.rendering();
 
         // Visible scanlines (0-239)
-        if rendering && (self.scanline < 240 || self.scanline == 261) {
-            // background-related things
-            match self.line_cycle {
-                0 => (), // This is an idle cycle.
-                1..=256 => {
-                    if self.scanline != 261 {
-                        pixel = Some(self.render_pixel());
-                    }
-                    if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
-                        self.load_data_into_registers();
-                    }
-                    self.shift_registers();
-                    self.perform_memory_fetch();
-                },
-                257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                321..=336 => {
-                    if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
-                        self.load_data_into_registers();
-                    }
-                    self.shift_registers();
-                    self.perform_memory_fetch();
-                },
-                x if x > 340 => panic!("cycle beyond 340"),
-                _ => (),
+        if rendering {
+            if self.scanline < 240 || self.scanline == 261 {
+                // background-related things
+                match self.line_cycle {
+                    0 => (), // This is an idle cycle.
+                    1..=256 => {
+                        if self.scanline != 261 {
+                            pixel = Some(self.render_pixel());
+                        }
+                        if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+                            self.load_data_into_registers();
+                        }
+                        self.shift_registers();
+                        self.perform_memory_fetch();
+                    },
+                    257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
+                    321..=336 => {
+                        if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+                            self.load_data_into_registers();
+                        }
+                        self.shift_registers();
+                        self.perform_memory_fetch();
+                    },
+                    x if x > 340 => panic!("cycle beyond 340"),
+                    _ => (),
+                }
             }
-        }
 
-        // sprite-related things
-        if rendering && self.scanline < 240 {
-            match self.line_cycle {
-                1 => self.secondary_oam = vec![0xFF; 0x20],
-                257 => {
-                    self.evaluate_sprites(); // ignoring all timing details
-                    self.fetch_sprites();
-                },
-                321..=340 => (), // Read the first byte in secondary OAM (while the PPU fetches the first two background tiles for the next scanline)
-                _ => (),
+            // sprite-related things
+            if self.scanline < 240 {
+                match self.line_cycle {
+                    1 => self.secondary_oam = vec![0xFF; 0x20],
+                    257 => {
+                        self.evaluate_sprites(); // ignoring all timing details
+                        self.fetch_sprites();
+                    },
+                    321..=340 => (), // Read the first byte in secondary OAM (while the PPU fetches the first two background tiles for the next scanline)
+                    _ => (),
+                }
             }
-        }
 
-        // During dots 280 to 304 of the pre-render scanline (end of vblank)
-        // If rendering is enabled, at the end of vblank, shortly after the horizontal bits
-        // are copied from t to v at dot 257, the PPU will repeatedly copy the vertical bits
-        // from t to v from dots 280 to 304, completing the full initialization of v from t:
-        if rendering && self.scanline == 261 && self.line_cycle >= 280 && self.line_cycle <= 304 {
-            self.copy_vertical();
-        }
-        // At dot 256 of each scanline, if rendering is enabled, the PPU increments the vertical position in v.
-        if rendering && self.line_cycle == 256 && (self.scanline < 240 || self.scanline == 261) {
-            self.inc_y();
+            // During dots 280 to 304 of the pre-render scanline (end of vblank)
+            // If rendering is enabled, at the end of vblank, shortly after the horizontal bits
+            // are copied from t to v at dot 257, the PPU will repeatedly copy the vertical bits
+            // from t to v from dots 280 to 304, completing the full initialization of v from t:
+            if self.scanline == 261 && self.line_cycle >= 280 && self.line_cycle <= 304 {
+                self.copy_vertical();
+            }
+            // At dot 256 of each scanline, if rendering is enabled, the PPU increments the vertical position in v.
+            if self.line_cycle == 256 && (self.scanline < 240 || self.scanline == 261) {
+                self.inc_y();
+            }
         }
 
         // v blank
