@@ -12,7 +12,7 @@ use ppu::Ppu;
 use apu::Apu;
 use cartridge::{check_signature, get_mapper};
 use input::poll_buttons;
-use screen::{init_window, draw_pixel, draw_to_window};
+use screen::{init_window, draw_to_window};
 use state::{save_state, load_state, find_next_filename, find_last_save_state};
 
 use std::path::{Path, PathBuf};
@@ -28,7 +28,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
 use sdl2::messagebox::*;
 
-// use cpuprofiler::PROFILER;
+use cpuprofiler::PROFILER;
 
 enum GameExitMode {
     QuitApplication,
@@ -45,7 +45,7 @@ fn main() -> Result<(), String> {
     let mut texture = texture_creator.create_texture_streaming(
         PixelFormatEnum::RGB24, 256 as u32, 240 as u32)
         .map_err(|e| e.to_string())?;
-    let mut screen_buffer = vec![0; 256 * 240 * 3]; // contains raw RGB data for the screen
+    // let mut screen_buffer = vec![0; 256 * 240 * 3]; // contains raw RGB data for the screen
 
     let argv = std::env::args().collect::<Vec<String>>();
     let mut filename = if argv.len() > 1 {
@@ -77,7 +77,7 @@ fn main() -> Result<(), String> {
         name
     };
     loop {
-        let res = run_game(&sdl_context, &mut event_pump, &mut screen_buffer, &mut canvas, &mut texture, &filename);
+        let res = run_game(&sdl_context, &mut event_pump, &mut canvas, &mut texture, &filename);
         match res {
             Ok(Some(GameExitMode::Reset)) => (),
             Ok(Some(GameExitMode::NewGame(next_file))) => filename = next_file,
@@ -91,7 +91,6 @@ fn main() -> Result<(), String> {
 fn run_game(
         sdl_context: &Sdl,
         event_pump: &mut EventPump,
-        screen_buffer: &mut Vec<u8>,
         canvas: &mut Canvas<Window>,
         texture: &mut Texture,
         filename: &str
@@ -115,12 +114,12 @@ fn run_game(
     let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
 
     // For throttling to 60 FPS
-    let mut timer = Instant::now();
+    //let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
 
-    // PROFILER.lock().unwrap().start("./main.profile").unwrap();
+    PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
         // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
         let cpu_cycles = cpu.step();
@@ -141,26 +140,26 @@ fn run_game(
         }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
-            let (pixel, end_of_frame) = cpu.ppu.clock();
-            match pixel {
+            let end_of_frame = cpu.ppu.clock();
+            /*match pixel {
                 Some((x, y, color)) => draw_pixel(screen_buffer, x, y, color),
                 None => (),
-            };
+            };*/
             if end_of_frame {
                 fps += 1; // keep track of how many frames we've rendered this second
-                draw_to_window(texture, canvas, &screen_buffer)?; // draw the buffer to the window with SDL
+                draw_to_window(texture, canvas, &cpu.ppu.screen_buffer)?; // draw the buffer to the window with SDL
                 let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
                 b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
                 if !audio_started {
                     audio_started = true;
                     audio_device.resume();
                 }
-                let now = Instant::now();
+                /*let now = Instant::now();
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
-                timer = Instant::now();
+                timer = Instant::now();*/
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
@@ -188,7 +187,7 @@ fn run_game(
             timer_counter += 1;
         }
     }
-    // PROFILER.lock().unwrap().stop().unwrap();
+    PROFILER.lock().unwrap().stop().unwrap();
     mapper.borrow().save_battery_backed_ram();
     Ok(None)
 }

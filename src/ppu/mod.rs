@@ -5,9 +5,10 @@ pub mod serialize;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::cartridge::Mapper;
+use crate::cartridge::{Mapper, Mirror};
 
 pub struct Ppu {
+    pub screen_buffer: Vec<u8>, // raw RGB data for screen
     line_cycle: usize, // x coordinate
     scanline:   usize, // y coordinate
     frame:      usize,
@@ -20,6 +21,7 @@ pub struct Ppu {
 
     // Cartridge things
     pub mapper: Rc<RefCell<dyn Mapper>>,
+    mirroring_type: Mirror,
 
     // Each nametable byte is a reference to the start of an 8-byte sequence in the pattern table.
     // That sequence represents an 8x8 tile, from top row to bottom.
@@ -95,7 +97,9 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new(mapper: Rc<RefCell<dyn Mapper>>) -> Self {
+    	let mirroring_type = mapper.borrow().get_mirroring();
         Ppu {
+            screen_buffer:                 vec![0; 256 * 240 * 3],
             line_cycle:                    0,
             scanline:                      0,
             frame:                         0,
@@ -104,6 +108,7 @@ impl Ppu {
             x:                             0,
             w:                             0,
             mapper:                        mapper,
+            mirroring_type:                mirroring_type,
             nametable_a:                   vec![0u8; 0x0400],
             nametable_b:                   vec![0u8; 0x0400],
             nametable_c:                   vec![0u8; 0x0400],
@@ -151,7 +156,8 @@ impl Ppu {
         }
     }
 
-    pub fn clock(&mut self) -> (Option<(usize, usize, [u8; 3])>, bool) {
+    #[inline(always)]
+    pub fn clock(&mut self) -> bool {
         if self.nmi_delay > 0 {
             self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
@@ -159,7 +165,7 @@ impl Ppu {
             }
         }
 
-        let mut pixel: Option<(usize, usize, [u8; 3])> = None;
+        let mut pixel: Option<[u8; 3]> = None;
         let rendering = self.rendering();
 
         // Visible scanlines (0-239)
@@ -171,13 +177,17 @@ impl Ppu {
                     if self.scanline != 261 {
                         pixel = Some(self.render_pixel());
                     }
-                    self.load_data_into_registers();
+                    if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+                        self.load_data_into_registers();
+                    }
                     self.shift_registers();
                     self.perform_memory_fetch();
                 },
                 257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
                 321..=336 => {
-                    self.load_data_into_registers();
+                    if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
+                        self.load_data_into_registers();
+                    }
                     self.shift_registers();
                     self.perform_memory_fetch();
                 },
@@ -225,6 +235,18 @@ impl Ppu {
 
         // signal time to draw frame
         let end_of_frame = self.line_cycle == 256 && self.scanline == 240;
+        
+        // update screen buffer
+        match pixel {
+            Some(p) => {
+                let (x, y) = (self.line_cycle - 1, self.scanline);
+                let offset = (y * 3 * 256) + (x * 3);
+                self.screen_buffer[offset] = p[0];
+                self.screen_buffer[offset+1] = p[1];
+                self.screen_buffer[offset+2] = p[2];
+            },
+            None => (),
+        };
 
         // advance clock
         // For odd frames, the cycle at the end of the pre-render scanline is skipped
@@ -256,7 +278,7 @@ impl Ppu {
         }
         self.previous_a12 = current_a12;
 
-        (pixel, end_of_frame)
+        end_of_frame
     }
 }
 

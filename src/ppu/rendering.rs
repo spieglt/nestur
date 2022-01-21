@@ -2,6 +2,7 @@ use super::cpu_registers::set_bit;
 
 impl super::Ppu {
 
+    #[inline(always)]
     pub fn perform_memory_fetch(&mut self) {
         match self.line_cycle % 8 {
             0 => self.inc_coarse_x(),
@@ -26,21 +27,22 @@ impl super::Ppu {
         self.background_palette_sr_high |= (self.background_palette_latch & 1 << 1 != 0) as u8;
     }
 
+    #[inline(always)]
     pub fn load_data_into_registers(&mut self) {
-        if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
-            // These contain the pattern table data for two tiles. Every 8 cycles, the data for the next
-            // tile is loaded into the upper 8 bits of this shift register. Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
-            self.background_pattern_sr_low |= self.low_pattern_table_byte as u16;
-            self.background_pattern_sr_high |= self.high_pattern_table_byte as u16;
-            self.background_palette_latch = self.attribute_table_byte;
-        }
+        // These contain the pattern table data for two tiles. Every 8 cycles, the data for the next
+        // tile is loaded into the upper 8 bits of this shift register. Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
+        self.background_pattern_sr_low |= self.low_pattern_table_byte as u16;
+        self.background_pattern_sr_high |= self.high_pattern_table_byte as u16;
+        self.background_palette_latch = self.attribute_table_byte;
     }
 
+    #[inline(always)]
     pub fn fetch_nametable_byte(&mut self) {
         // nametable address is the bottom 12 bits of v in the 0x2000 range
         self.nametable_byte = self.read(0x2000 | (self.v & 0b00001111_11111111) as usize);
     }
 
+    #[inline(always)]
     pub fn fetch_attribute_table_byte(&mut self) {
         let address = 0x23C0 | (self.v & 0x0C00) | ((self.v >> 4) & 0x38) | ((self.v >> 2) & 0x07);
         let byte = self.read(address as usize);
@@ -60,6 +62,7 @@ impl super::Ppu {
         };
     }
 
+    #[inline(always)]
     pub fn fetch_low_pattern_table_byte(&mut self) {
         // pattern table address should be the pattern table base (0x0 or 0x1000)
         let mut address = self.background_pattern_table_base;
@@ -70,6 +73,7 @@ impl super::Ppu {
         self.low_pattern_table_byte = self.read(address);
     }
 
+    #[inline(always)]
     pub fn fetch_high_pattern_table_byte(&mut self) {
         // same as low pattern table byte, but "Fetch the high-order byte of this sliver from an address 8 bytes higher."
         let mut address = self.background_pattern_table_base;
@@ -78,8 +82,9 @@ impl super::Ppu {
         self.high_pattern_table_byte = self.read(address + 8);
     }
 
-    pub fn render_pixel(&mut self) -> (usize, usize, [u8; 3]) {
-        let (x, y) = (self.line_cycle - 1, self.scanline);
+    #[inline(always)]
+    pub fn render_pixel(&mut self) -> [u8; 3] {
+        let (x, _y) = (self.line_cycle - 1, self.scanline);
         let mut background_pixel = self.select_background_pixel();
         let (mut sprite_pixel, current_sprite) = self.select_sprite_pixel();
 
@@ -133,22 +138,26 @@ impl super::Ppu {
             color[1] = deemphasize(&color[1]);
             color[2] = emphasize(&color[2]);
         }
-        (x,y,color)
+        color
     }
 
+    #[inline(always)]
     pub fn select_background_pixel(&mut self) -> u8 {
         if self.show_background {
             // Returned background pixel is a value between 0 and 3.
             // the bit from background_pattern_sr_low (low pattern table byte) in the 0th place,
             // and the value of the background_pattern_sr_high (high pattern table byte) in the 1st place.
-            let low_bit  = (self.background_pattern_sr_low & (1 << (15 - self.x)) != 0) as u8;
-            let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x)) != 0) as u8;
-            (high_bit << 1) | low_bit
+            //let low_bit  = (self.background_pattern_sr_low & (1 << (15 - self.x)) != 0) as u8;
+            //let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x)) != 0) as u8;
+            let low_bit = (self.background_pattern_sr_low & (1 << (15 - self.x))) >> (15 - self.x);
+            let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x))) >> (15 - self.x);
+            ((high_bit << 1) | low_bit) as u8
         } else {
             0
         }
     }
 
+    #[inline(always)]
     pub fn select_sprite_pixel(&mut self) -> (u8, usize) {
         // Returns (sprite_pixel, index of sprite_pixel within secondary_oam/shift registers)
         if self.show_sprites {
@@ -208,6 +217,7 @@ impl super::Ppu {
 
     }
 
+    #[inline(always)]
     pub fn fetch_sprites(&mut self) {
         for i in 0..self.num_sprites {
             let mut address: usize;
@@ -327,6 +337,7 @@ impl super::Ppu {
         self.v |= t_vals;
     }
 
+    #[inline(always)]
     pub fn rendering(&self) -> bool {
         self.show_background || self.show_sprites
     }
