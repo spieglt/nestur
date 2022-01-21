@@ -165,22 +165,26 @@ impl super::Ppu {
             let mut low_bit  = 0;
             let mut high_bit = 0;
             let mut secondary_index = 0;
+            let mut frozen = false;
+
             for i in 0..self.num_sprites {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
                 if self.sprite_counters[i] == 0 {
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
-                    secondary_index = i;
-                    low_bit  = (self.sprite_pattern_table_srs[i].0 & 1<<7 != 0) as u8;
-                    high_bit = (self.sprite_pattern_table_srs[i].1 & 1<<7 != 0) as u8;
-                    if !(low_bit == 0 && high_bit == 0) {
-                        break;
+                    if !frozen {
+                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
+                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
+                        if !(low_bit == 0 && high_bit == 0) {
+                            low_bit  = lb;
+                            high_bit = hb;
+                            secondary_index = i;
+                            frozen = true;
+                        }
                     }
                 }
-            }
-            // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
-            for i in 0..self.num_sprites {
+                // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
                 if self.sprite_counters[i] == 0 {
                     self.sprite_pattern_table_srs[i].0 <<= 1;
                     self.sprite_pattern_table_srs[i].1 <<= 1;
