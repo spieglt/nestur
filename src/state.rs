@@ -20,7 +20,7 @@ pub fn save_state(cpu: &cpu::Cpu, save_file: &PathBuf) -> Result<(), String> {
         cpu: cpu.save_state(),
         ppu: cpu.ppu.save_state(),
         apu: cpu.apu.save_state(),
-        mapper: cpu.mapper.borrow().save_state(),
+        mapper: cpu.ppu.mapper.save_state(),
     };
     let serialized = serde_json::to_string(&data)
         .map_err(|e| e.to_string())?;
@@ -46,7 +46,7 @@ pub fn load_state(cpu: &mut cpu::Cpu, save_file: &PathBuf) -> Result<(), String>
         cpu.load_state(state.cpu);
         cpu.ppu.load_state(state.ppu);
         cpu.apu.load_state(state.apu);
-        cpu.mapper.borrow_mut().load_state(state.mapper);
+        cpu.ppu.mapper.load_state(state.mapper);
         println!("loading save state from file: {:?}", save_file);
         Ok(())
     } else {

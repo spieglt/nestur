@@ -11,10 +11,8 @@ use uxrom::Uxrom;
 use cnrom::Cnrom;
 use mmc3::Mmc3;
 
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-use std::rc::Rc;
 
 pub trait Mapper {
     fn read(&self, address: usize) -> u8;
@@ -37,15 +35,15 @@ pub enum Mirror {
     FourScreen,
 }
 
-pub fn get_mapper(filename: String) -> Rc<RefCell<dyn Mapper>> {
+pub fn get_mapper(filename: String) -> Box<dyn Mapper> {
     let cart = Cartridge::new(filename);
     let num = cart.mapper_num;
     match num {
-        0 => Rc::new(RefCell::new(Nrom::new(cart))),
-        1 => Rc::new(RefCell::new(Mmc1::new(cart))),
-        2 => Rc::new(RefCell::new(Uxrom::new(cart))),
-        3 => Rc::new(RefCell::new(Cnrom::new(cart))),
-        4 => Rc::new(RefCell::new(Mmc3::new(cart))),
+        0 => Box::new(Nrom::new(cart)),
+        1 => Box::new(Mmc1::new(cart)),
+        2 => Box::new(Uxrom::new(cart)),
+        3 => Box::new(Cnrom::new(cart)),
+        4 => Box::new(Mmc3::new(cart)),
         _ => panic!("unimplemented mapper: {}", num),
     }
 }

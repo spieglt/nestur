@@ -3,8 +3,6 @@ mod rendering;
 mod memory;
 pub mod serialize;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::cartridge::{Mapper, Mirror};
 
 pub struct Ppu {
@@ -20,7 +18,7 @@ pub struct Ppu {
     w: u8, // First or second write toggle (1 bit)
 
     // Cartridge things
-    pub mapper: Rc<RefCell<dyn Mapper>>,
+    pub mapper: Box<dyn Mapper>,
     mirroring_type: Mirror,
 
     // Each nametable byte is a reference to the start of an 8-byte sequence in the pattern table.
@@ -96,8 +94,8 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new(mapper: Rc<RefCell<dyn Mapper>>) -> Self {
-    	let mirroring_type = mapper.borrow().get_mirroring();
+    pub fn new(mapper: Box<dyn Mapper>) -> Self {
+    	let mirroring_type = mapper.get_mirroring();
         Ppu {
             screen_buffer:                 vec![0; 256 * 240 * 3],
             line_cycle:                    0,
@@ -274,7 +272,7 @@ impl Ppu {
             && (0..241).contains(&self.scanline)
             && rendering
         {
-            self.mapper.borrow_mut().clock()
+            self.mapper.clock()
         }
         self.previous_a12 = current_a12;
 

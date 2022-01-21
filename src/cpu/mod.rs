@@ -3,10 +3,7 @@ mod opcodes;
 mod utility;
 pub mod serialize;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use serde::{Serialize, Deserialize};
-use crate::cartridge::Mapper;
 
 // RAM locations
 const STACK_OFFSET: usize = 0x100;
@@ -66,7 +63,6 @@ pub struct Cpu {
     delay: usize, // for skipping cycles during OAM DMA
     before_clock: u64,
 
-    pub mapper: Rc<RefCell<dyn Mapper>>, // cartridge data
     pub ppu: super::Ppu,
     pub apu: super::Apu,
 
@@ -80,7 +76,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(mapper: Rc<RefCell<dyn Mapper>>, ppu: super::Ppu, apu: super::Apu) -> Self {
+    pub fn new(ppu: super::Ppu, apu: super::Apu) -> Self {
         let mut cpu = Cpu{
             mem: vec![0; 0x2000],
             a: 0, x: 0, y: 0,
@@ -90,7 +86,6 @@ impl Cpu {
             clock: 0,
             delay: 0,
             before_clock: 0,
-            mapper: mapper,
             ppu: ppu,
             apu: apu,
             strobe: 0,
@@ -195,7 +190,7 @@ impl Cpu {
             0x4016          => self.read_controller(),
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => self.mapper.borrow().read(address),
+            0x4020..=0xFFFF => self.ppu.mapper.read(address),
             _ => panic!("invalid read from 0x{:02x}", address),
         };
         val
@@ -210,7 +205,7 @@ impl Cpu {
             0x4016          => self.write_controller(val),
             0x4000..=0x4017 => self.apu.write_reg(address, val),
             0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => self.mapper.borrow_mut().write(address, val),
+            0x4020..=0xFFFF => self.ppu.mapper.write(address, val),
             _ => panic!("invalid write to {:02x}", address),
         }
     }
@@ -280,7 +275,7 @@ impl Cpu {
         }
         self.apu.trigger_irq = false;
         // and mapper MMC3
-        if self.mapper.borrow_mut().check_irq() && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
+        if self.ppu.mapper.check_irq() && (self.p & INTERRUPT_DISABLE_FLAG == 0) {
             self.irq();
         }
         // TODO: should checks for APU and MMC3 IRQs be combined and acknowledged together?

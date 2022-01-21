@@ -109,9 +109,9 @@ fn run_game(
     // Initialize hardware components
     let filepath = Path::new(filename).to_path_buf();
     let mapper = get_mapper(filename.to_string());
-    let ppu = Ppu::new(mapper.clone());
+    let ppu = Ppu::new(mapper);
     let apu = Apu::new();
-    let mut cpu = Cpu::new(mapper.clone(), ppu, apu);
+    let mut cpu = Cpu::new(ppu, apu);
 
     // For throttling to 60 FPS
     //let mut timer = Instant::now();
@@ -188,7 +188,7 @@ fn run_game(
         }
     }
     PROFILER.lock().unwrap().stop().unwrap();
-    mapper.borrow().save_battery_backed_ram();
+    cpu.ppu.mapper.save_battery_backed_ram();
     Ok(None)
 }
 
