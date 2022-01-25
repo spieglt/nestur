@@ -2,6 +2,7 @@ mod cpu_registers;
 mod rendering;
 mod memory;
 pub mod serialize;
+mod new_rendering;
 
 use crate::cartridge::{Mapper, Mirror};
 
@@ -269,10 +270,10 @@ impl Ppu {
         }
 
         // deal with mapper MMC3
-        let current_a12 = if self.v & 1 << 12 != 0 { 1 } else { 0 };
-        if current_a12 != self.previous_a12
+        let current_a12 = ((self.v & 1 << 12) >> 12) as u8;
+        if rendering
             && (0..241).contains(&self.scanline)
-            && rendering
+            && current_a12 != self.previous_a12
         {
             self.mapper.clock()
         }

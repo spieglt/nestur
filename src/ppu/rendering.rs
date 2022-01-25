@@ -86,7 +86,7 @@ impl super::Ppu {
     pub fn render_pixel(&mut self) -> [u8; 3] {
         let (x, _y) = (self.line_cycle - 1, self.scanline);
         let mut background_pixel = self.select_background_pixel();
-        let (mut sprite_pixel, current_sprite) = self.select_sprite_pixel();
+        let (mut sprite_pixel, current_sprite) = if self.show_sprites { self.select_sprite_pixel() } else { (0, 0) };
 
         // extract low and high bits from palette shift registers according to fine x, starting from left
         let low_palette_bit = (self.background_palette_sr_low & (1 << (7-self.x)) != 0) as u8;
@@ -147,8 +147,6 @@ impl super::Ppu {
             // Returned background pixel is a value between 0 and 3.
             // the bit from background_pattern_sr_low (low pattern table byte) in the 0th place,
             // and the value of the background_pattern_sr_high (high pattern table byte) in the 1st place.
-            //let low_bit  = (self.background_pattern_sr_low & (1 << (15 - self.x)) != 0) as u8;
-            //let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x)) != 0) as u8;
             let low_bit = (self.background_pattern_sr_low & (1 << (15 - self.x))) >> (15 - self.x);
             let high_bit = (self.background_pattern_sr_high & (1 << (15 - self.x))) >> (15 - self.x);
             ((high_bit << 1) | low_bit) as u8
@@ -160,44 +158,40 @@ impl super::Ppu {
     #[inline(always)]
     pub fn select_sprite_pixel(&mut self) -> (u8, usize) {
         // Returns (sprite_pixel, index of sprite_pixel within secondary_oam/shift registers)
-        if self.show_sprites {
-            // sprite pixel is a value between 0 and 3 representing the two sprite pattern table shift registers
-            let mut low_bit  = 0;
-            let mut high_bit = 0;
-            let mut secondary_index = 0;
-            let mut frozen = false;
+        // sprite pixel is a value between 0 and 3 representing the two sprite pattern table shift registers
+        let mut low_bit  = 0;
+        let mut high_bit = 0;
+        let mut secondary_index = 0;
+        let mut frozen = false;
 
-            for i in 0..self.num_sprites {
-                // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
-                // This output accompanies the data in the sprite's latch, to form a pixel.
-                if self.sprite_counters[i] == 0 {
-                    // The current pixel for each "active" sprite is checked (from highest to lowest priority),
-                    // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
-                    if !frozen {
-                        secondary_index = i;
-                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
-                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
-                        if !(lb == 0 && hb == 0) {
-                            low_bit  = lb;
-                            high_bit = hb;
-                            frozen = true;
-                        }
+        for i in 0..self.num_sprites {
+            // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
+            // This output accompanies the data in the sprite's latch, to form a pixel.
+            if self.sprite_counters[i] == 0 {
+                // The current pixel for each "active" sprite is checked (from highest to lowest priority),
+                // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
+                if !frozen {
+                    secondary_index = i;
+                    let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
+                    let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
+                    if !(lb == 0 && hb == 0) {
+                        low_bit  = lb;
+                        high_bit = hb;
+                        frozen = true;
                     }
                 }
-                // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
-                if self.sprite_counters[i] == 0 {
-                    self.sprite_pattern_table_srs[i].0 <<= 1;
-                    self.sprite_pattern_table_srs[i].1 <<= 1;
-                }
-                // Every cycle, the 8 x-position counters for the sprites are decremented by one.
-                if self.sprite_counters[i] > 0 {
-                    self.sprite_counters[i] -= 1;
-                }
             }
-            ((high_bit << 1) | low_bit, secondary_index)
-        } else {
-            (0, 0)
+            // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
+            if self.sprite_counters[i] == 0 {
+                self.sprite_pattern_table_srs[i].0 <<= 1;
+                self.sprite_pattern_table_srs[i].1 <<= 1;
+            }
+            // Every cycle, the 8 x-position counters for the sprites are decremented by one.
+            if self.sprite_counters[i] > 0 {
+                self.sprite_counters[i] -= 1;
+            }
         }
+        ((high_bit << 1) | low_bit, secondary_index)
     }
 
     pub fn evaluate_sprites(&mut self) {
