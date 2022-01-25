@@ -1,25 +1,14 @@
-
-// so instead of shifting, we just need to access the next index in the shift registers.
-// and the background palette shift register is just fed from the latch for the next 8 pixels.
-// the palette latch is just the attribute_table_byte. 
-
-// to render an 8-pixel stretch, we need:
-// the background pixel, which comes from the background pattern shift registers, low and high. those are 16 bits, so we can work with 16 bits maybe?
-// the sprite pixel, which comes from the sprite pattern shift registers
-// the secondary index, blah blah
-
-// then decide priority, 
+// problem now is that the ppu is running a whole scanline without letting the cpu run?
+// need to run ppu, determine how many cycles we ran, then run cpu and apu accordingly?
 
 // render whole background row, then sprites, then filter?
-
-// so to get 8 background pixels we need to, load data into registers? perform memory fetch, and shift registers
 
 impl super::Ppu {
 
     pub fn render_background_scanline(&mut self) -> Vec<u8> {
         // render 8 pixels, then shift and such 64 times?
         let mut scanline = vec![];
-        for _ in 0..64 {
+        for _ in 0..32 {
             scanline.append(&mut self.render_eight_background_pixels());
         }
         scanline
@@ -62,7 +51,7 @@ impl super::Ppu {
 
 
     #[inline(always)]
-    pub fn new_clock(&mut self) -> bool {
+    pub fn new_clock(&mut self) -> (bool, bool) {
         if self.nmi_delay > 0 {
             self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
@@ -79,13 +68,15 @@ impl super::Ppu {
                 // background-related things
                 match self.line_cycle {
                     0 => (), // This is an idle cycle.
-                    1 => {
-                        let scanline = self.render_background_scanline();
-                        let y_offset = self.scanline * 3 * 256;
-                        self.screen_buffer.splice(y_offset..y_offset+256, scanline);
-                        let rendered_scanline = true;
+                    1..=256 => {
+                        let next_eight = self.render_eight_background_pixels();
+                        let offset = (self.scanline * 256) + (self.line_cycle - 1);
+                        // self.screen_buffer.splice(offset..offset+8, next_eight);
+                        for i in 0..8*3 {
+                            self.screen_buffer[offset+i] = next_eight[i];
+                        }
+                        rendered_scanline = true;
                     },
-                    2..=256 => (),
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
                     321..=336 => {
                         if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
@@ -94,7 +85,7 @@ impl super::Ppu {
                         self.shift_registers();
                         self.perform_memory_fetch();
                     },
-                    x if x > 340 => panic!("cycle beyond 340"),
+                    x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
                 }
             }
@@ -170,7 +161,7 @@ impl super::Ppu {
         }
         self.previous_a12 = current_a12;
 
-        end_of_frame
+        (end_of_frame, rendered_scanline)
     }
 }
 
