@@ -92,6 +92,9 @@ pub struct Ppu {
     pub recent_bits:               u8,   // Least significant bits previously written into a PPU register
 
     previous_a12:                  u8,
+
+    background_pattern_shift_register_low: u8,
+    background_pattern_shift_register_high: u8,
 }
 
 impl Ppu {
@@ -152,6 +155,8 @@ impl Ppu {
             read_buffer:                   0,
             recent_bits:                   0,
             previous_a12:                  0,
+            background_pattern_shift_register_low: 0,
+            background_pattern_shift_register_high: 0,
         }
     }
 

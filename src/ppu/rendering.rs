@@ -71,6 +71,8 @@ impl super::Ppu {
         // plus the fine Y scroll
         address += ((self.v as usize) >> 12) & 7;
         self.low_pattern_table_byte = self.read(address);
+        println!("bptb {}, address {}", self.background_pattern_table_base, address);
+        // println!("fetched low {}", self.low_pattern_table_byte);
     }
 
     #[inline(always)]
@@ -80,6 +82,7 @@ impl super::Ppu {
         address += (self.nametable_byte as usize) << 4;
         address += (self.v as usize >> 12) & 7;
         self.high_pattern_table_byte = self.read(address + 8);
+        // println!("fetched high {}", self.high_pattern_table_byte);
     }
 
     #[inline(always)]
@@ -107,6 +110,7 @@ impl super::Ppu {
         } else if background_pixel != 0 && sprite_pixel == 0 { // displaying the background pixel
             palette_address += palette_offset << 2; // Palette number from attribute table or OAM
             palette_address += background_pixel; // Pixel value from tile data
+            // println!("background pixel: {:08b}, palette address: {:08b}", background_pixel, palette_address);
         } else if background_pixel != 0 && sprite_pixel != 0 {
             if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
                 self.sprite_zero_hit = true;

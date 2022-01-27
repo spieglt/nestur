@@ -17,9 +17,19 @@ impl super::Ppu {
     pub fn render_eight_background_pixels(&mut self) -> Vec<u8> {
         let mut eight_pixels = vec![];
         if self.show_background && self.show_background_left {
-            for i in 0..8 {
-                let mut palette_address = add_bits(self.low_pattern_table_byte, self.high_pattern_table_byte, i as u8);
-                palette_address += self.attribute_table_byte << 2;
+            for i in (0..8).rev() {
+                // this is actually the problem. select_background_pixel uses self.x.... so does palette. wait only a problem when scrolling? 
+                let background_pixel = add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, i as u8);
+                // this is a problem
+                // background_palette_sr_low comes from background_palette_latch, which comes from attribute_table_byte
+                // but both of those have a low and a high bit. never mind, that's accounted for.
+                // but background_pattern_sr_low is a u16, should be delayed by 8 pixels
+                let palette_address = background_pixel + self.attribute_table_byte << 2;
+                // println!("background pixel: {:08b}, palette address: {:08b}", background_pixel, palette_address);
+
+                
+                
+
                 let pixel = self.palette_ram[palette_address as usize] as usize;
                 eight_pixels.append(&mut super::PALETTE_TABLE[pixel].to_vec());
             }
@@ -29,8 +39,18 @@ impl super::Ppu {
         eight_pixels
     }
 
+    // logging seems to indicate the cpu is not changing the nametable address or something.
+    // needs sprite zero hit? need to just call select_sprite_pixel 8 times since fetch_sprites() loads the pixels into the sprite_pattern_table_srs?
+    // or change it for that reason? yeah, sprite_pattern_table_srs should be replaced. or not replaced, but instead of shifting out top pixel and shifting left, we loop from 7 to 0?
+    // pub fn render_eight_sprite_pixels(&mut self) -> Vec<u8> {
+
+    //     vec![]
+    // }
+
     #[inline(always)]
     pub fn new_perform_memory_fetch(&mut self) {
+        self.background_pattern_shift_register_low = self.low_pattern_table_byte;
+        self.background_pattern_shift_register_high = self.high_pattern_table_byte;
         self.inc_coarse_x();
         self.fetch_nametable_byte();
         self.fetch_attribute_table_byte();
@@ -47,6 +67,9 @@ impl super::Ppu {
         address += ((self.v as usize) >> 12) & 7;
         self.low_pattern_table_byte = self.read(address);
         self.high_pattern_table_byte = self.read(address + 8);
+        println!("bptb {}, address {}", self.background_pattern_table_base, address);
+        // println!("fetched low {}", self.low_pattern_table_byte);
+        // println!("fetched high {}", self.high_pattern_table_byte);
     }
 
 
@@ -64,8 +87,8 @@ impl super::Ppu {
 
         // Visible scanlines (0-239)
         if rendering {
+            // background-related things
             if self.scanline < 240 || self.scanline == 261 {
-                // background-related things
                 match self.line_cycle {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
@@ -78,13 +101,7 @@ impl super::Ppu {
                         rendered_scanline = true;
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                    321..=336 => {
-                        if self.line_cycle % 8 == 1 { // The shifters are reloaded during ticks 9, 17, 25, ..., 257.
-                            self.load_data_into_registers();
-                        }
-                        self.shift_registers();
-                        self.perform_memory_fetch();
-                    },
+                    321..=336 => if self.line_cycle % 8 == 0 { self.new_perform_memory_fetch() },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
                 }
@@ -169,5 +186,6 @@ impl super::Ppu {
 fn add_bits(low: u8, high: u8, bit: u8) -> u8 {
     let low_bit = (low & 1 << bit) >> bit;
     let high_bit = ((high & 1 << bit) >> bit) << 1;
+    // println!("low: {}, high: {}, returning: {}", low_bit, high_bit, high_bit + low_bit);
     high_bit + low_bit
 }
