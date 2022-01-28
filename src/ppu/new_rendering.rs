@@ -1,56 +1,69 @@
-// problem now is that the ppu is running a whole scanline without letting the cpu run?
-// need to run ppu, determine how many cycles we ran, then run cpu and apu accordingly?
-
-// render whole background row, then sprites, then filter?
 
 impl super::Ppu {
 
-    pub fn render_background_scanline(&mut self) -> Vec<u8> {
-        // render 8 pixels, then shift and such 64 times?
-        let mut scanline = vec![];
-        for _ in 0..32 {
-            scanline.append(&mut self.render_eight_background_pixels());
-        }
-        scanline
-    }
-
-    pub fn render_eight_background_pixels(&mut self) -> Vec<u8> {
-        let mut eight_pixels = vec![];
-        if self.show_background && self.show_background_left {
-            for i in (0..8).rev() {
-                // this is actually the problem. select_background_pixel uses self.x.... so does palette. wait only a problem when scrolling? 
-                let background_pixel = add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, i as u8);
-                // this is a problem
-                // background_palette_sr_low comes from background_palette_latch, which comes from attribute_table_byte
-                // but both of those have a low and a high bit. never mind, that's accounted for.
-                // but background_pattern_sr_low is a u16, should be delayed by 8 pixels
-                let palette_address = background_pixel + self.attribute_table_byte << 2;
-                // println!("background pixel: {:08b}, palette address: {:08b}", background_pixel, palette_address);
-
-                
-                
-
-                let pixel = self.palette_ram[palette_address as usize] as usize;
-                eight_pixels.append(&mut super::PALETTE_TABLE[pixel].to_vec());
-            }
-        }
-        self.line_cycle += 8;
-        self.new_perform_memory_fetch();
-        eight_pixels
-    }
-
-    // logging seems to indicate the cpu is not changing the nametable address or something.
-    // needs sprite zero hit? need to just call select_sprite_pixel 8 times since fetch_sprites() loads the pixels into the sprite_pattern_table_srs?
-    // or change it for that reason? yeah, sprite_pattern_table_srs should be replaced. or not replaced, but instead of shifting out top pixel and shifting left, we loop from 7 to 0?
-    // pub fn render_eight_sprite_pixels(&mut self) -> Vec<u8> {
-
-    //     vec![]
+    // pub fn render_background_scanline(&mut self) -> Vec<u8> {
+    //     // render 8 pixels, then shift and such 64 times?
+    //     let mut scanline = vec![];
+    //     for _ in 0..32 {
+    //         scanline.append(&mut self.render_eight_pixels());
+    //     }
+    //     scanline
     // }
+
+    #[inline(always)]
+    pub fn render_eight_pixels(&mut self) {
+        let (x, _y) = (self.line_cycle - 1, self.scanline);
+        for i in 0..8 {
+            let mut background_pixel = add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 7-i as u8);
+            let (mut sprite_pixel, current_sprite) = if self.show_sprites { self.select_sprite_pixel() } else { (0, 0) };
+
+            // extract low and high bits from palette shift registers according to fine x, starting from left
+            let low_palette_bit = (self.background_palette_sr_low & (1 << self.x)) >> self.x;
+            let high_palette_bit = (self.background_palette_sr_high & (1 << self.x)) >> self.x;
+            let palette_offset = (high_palette_bit << 1) | low_palette_bit;
+
+            if x < 8 && !self.show_background_left {
+                background_pixel = 0;
+            }
+            if x < 8 && !self.show_sprites_left {
+                sprite_pixel = 0;
+            }
+            let mut palette_address = 0;
+            if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
+                palette_address += 0x10; // second half of palette table, "Background/Sprite select"
+                palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
+                palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
+            } else if background_pixel != 0 && sprite_pixel == 0 { // displaying the background pixel
+                palette_address += palette_offset << 2; // Palette number from attribute table or OAM
+                palette_address += background_pixel; // Pixel value from tile data
+            } else if background_pixel != 0 && sprite_pixel != 0 {
+                if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
+                    self.sprite_zero_hit = true;
+                }
+                if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
+                    palette_address += 0x10;
+                    palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
+                    palette_address += sprite_pixel;
+                } else {
+                    palette_address += palette_offset << 2;
+                    palette_address += background_pixel;
+                }
+            }
+            let pixel = self.palette_ram[palette_address as usize] as usize;
+            let color: [u8; 3] = super::PALETTE_TABLE[pixel];
+            let offset = (self.scanline * 256 * 3) + ((self.line_cycle - 1) * 3);
+            self.screen_buffer[offset + (i*3) + 0] = color[0];
+            self.screen_buffer[offset + (i*3) + 1] = color[1];
+            self.screen_buffer[offset + (i*3) + 2] = color[2];
+        }
+    }
 
     #[inline(always)]
     pub fn new_perform_memory_fetch(&mut self) {
         self.background_pattern_shift_register_low = self.low_pattern_table_byte;
         self.background_pattern_shift_register_high = self.high_pattern_table_byte;
+        self.background_palette_sr_low = if self.attribute_table_byte & 1 == 1 { 0b11111111 } else { 0 };
+        self.background_palette_sr_high = if self.attribute_table_byte & 0b10 == 0b10 { 0b11111111 } else { 0 };
         self.inc_coarse_x();
         self.fetch_nametable_byte();
         self.fetch_attribute_table_byte();
@@ -67,9 +80,6 @@ impl super::Ppu {
         address += ((self.v as usize) >> 12) & 7;
         self.low_pattern_table_byte = self.read(address);
         self.high_pattern_table_byte = self.read(address + 8);
-        println!("bptb {}, address {}", self.background_pattern_table_base, address);
-        // println!("fetched low {}", self.low_pattern_table_byte);
-        // println!("fetched high {}", self.high_pattern_table_byte);
     }
 
 
@@ -92,16 +102,16 @@ impl super::Ppu {
                 match self.line_cycle {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
-                        let next_eight = self.render_eight_background_pixels();
-                        let offset = (self.scanline * 256) + (self.line_cycle - 1);
-                        // self.screen_buffer.splice(offset..offset+8, next_eight);
-                        for i in 0..8*3 {
-                            self.screen_buffer[offset+i] = next_eight[i];
+                        if self.line_cycle % 8 == 1 {
+                            if self.scanline != 261 {
+                                self.render_eight_pixels();
+                                rendered_scanline = true;
+                            }
+                            self.new_perform_memory_fetch();
                         }
-                        rendered_scanline = true;
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                    321..=336 => if self.line_cycle % 8 == 0 { self.new_perform_memory_fetch() },
+                    321..=336 => if self.line_cycle % 8 == 1 { self.new_perform_memory_fetch() },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
                 }
@@ -164,7 +174,7 @@ impl super::Ppu {
             self.line_cycle = 0;
             self.scanline += 1;
         // If none of the above, just go to next cycle in the row
-        } else if !rendered_scanline {
+        } else {
             self.line_cycle += 1;
         }
 
@@ -182,10 +192,8 @@ impl super::Ppu {
     }
 }
 
-#[inline(always)]
 fn add_bits(low: u8, high: u8, bit: u8) -> u8 {
     let low_bit = (low & 1 << bit) >> bit;
     let high_bit = ((high & 1 << bit) >> bit) << 1;
-    // println!("low: {}, high: {}, returning: {}", low_bit, high_bit, high_bit + low_bit);
     high_bit + low_bit
 }

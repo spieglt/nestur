@@ -145,7 +145,7 @@ impl super::Ppu {
         probably has, need to read twice, but that's advice to the programmer, not the emulator developer.
         As for 0x3F00 through 0x3FFF, the palette RAM indexes and their mirrors, need to find corresponding nametable?
         There are 4 nametables, duplicated once, so 8. There is one palette RAM index, mirrored 7 times, so 8.
-        So to get from the fifth pallete RAM mirror, which would be 0x3F80, you'd select the 5th nametable,
+        So to get from the fifth palette RAM mirror, which would be 0x3F80, you'd select the 5th nametable,
         which would be the first mirrored nametable, 0x3000?
         No, just subtract 0x1000. https://forums.nesdev.com/viewtopic.php?f=3&t=18627:
 

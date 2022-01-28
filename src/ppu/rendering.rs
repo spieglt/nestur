@@ -71,7 +71,7 @@ impl super::Ppu {
         // plus the fine Y scroll
         address += ((self.v as usize) >> 12) & 7;
         self.low_pattern_table_byte = self.read(address);
-        println!("bptb {}, address {}", self.background_pattern_table_base, address);
+        // println!("bptb {}, address {}", self.background_pattern_table_base, address);
         // println!("fetched low {}", self.low_pattern_table_byte);
     }
 

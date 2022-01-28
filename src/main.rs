@@ -45,7 +45,6 @@ fn main() -> Result<(), String> {
     let mut texture = texture_creator.create_texture_streaming(
         PixelFormatEnum::RGB24, 256 as u32, 240 as u32)
         .map_err(|e| e.to_string())?;
-    // let mut screen_buffer = vec![0; 256 * 240 * 3]; // contains raw RGB data for the screen
 
     let argv = std::env::args().collect::<Vec<String>>();
     let mut filename = if argv.len() > 1 {
@@ -119,19 +118,13 @@ fn run_game(
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
 
-    // if cpu budget > 0, clock cpu and add triple cycles to ppu and half cycles to apu
-    // if not, clock ppu 3 times, and add 1 to cpu budget, half cycle to apu
-    // cpu budget += cpu.ppu.clock()
     let mut cpu_budget: i32 = 1;
 
     PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
 
 
-
-
         if cpu_budget > 0 {
-            // println!("cpu, budget before: {}", cpu_budget);
             let cpu_cycles = cpu.step();
             cpu_budget -= cpu_cycles as i32; // should be safe because no 1 cpu instruction takes more than a few clock cycles
             // clock APU every other CPU cycle
@@ -149,14 +142,11 @@ fn run_game(
             //     let sample_byte = cpu.read(cpu.apu.dmc.current_address);
             //     temp_buffer.push(cpu.apu.clock(sample_byte));
             // }
-            // println!("cpu, budget after: {}", cpu_budget);
         } else {
-            // println!("ppu, budget before: {}", cpu_budget);
             for _ in 0..3 {
                 let (end_of_frame, rendered_scanline) = cpu.ppu.new_clock();
                 if rendered_scanline {
                     cpu_budget += 3;
-                    // println!("ppu, budget after: {}", cpu_budget);
                 }
                 if end_of_frame {
                     fps += 1; // keep track of how many frames we've rendered this second
@@ -183,9 +173,7 @@ fn run_game(
                 }
             }
             cpu_budget += 1;
-            // println!("ppu, budget after: {}", cpu_budget);
         }
-        // println!("===============");
 
 
 /*
