@@ -11,24 +11,95 @@ impl super::Ppu {
     // }
 
     #[inline(always)]
+    pub fn eight_sprite_pixels(&mut self) -> ([u8; 8], [usize; 8]) {
+        // what we do now is: look at each sprite in secondary OAM, look at its counter
+        // the counter is decremented each time: its value is distance from line_cycle
+        // so we just need to look at whether its x-value > line_cycle. if it's not, sprite is live,
+        // and the pixel we're concerned with is line_cycle - x-value?
+
+        let mut pixels = [0u8; 8];
+        // let mut high_bits = [0u8; 8];
+        let mut secondary_indices = [0usize; 8];
+
+        for p in 0..8 {
+            let mut frozen = false;
+            for i in 0..self.num_sprites {
+                // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
+                // This output accompanies the data in the sprite's latch, to form a pixel.
+                if self.sprite_counters[i] == 0 {
+                    // The current pixel for each "active" sprite is checked (from highest to lowest priority),
+                    // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
+                    if !frozen {
+                        secondary_indices[p] = i;
+                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
+                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
+                        if !(lb == 0 && hb == 0) {
+                            pixels[p] = (hb<<1) + lb;
+                            frozen = true;
+                        }
+                    }
+                }
+                // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
+                if self.sprite_counters[i] == 0 {
+                    self.sprite_pattern_table_srs[i].0 <<= 1;
+                    self.sprite_pattern_table_srs[i].1 <<= 1;
+                }
+                // Every cycle, the 8 x-position counters for the sprites are decremented by one.
+                if self.sprite_counters[i] > 0 {
+                    self.sprite_counters[i] -= 1;
+                }
+            }
+        }
+        (pixels, secondary_indices)
+    }
+
+    #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
-        let (x, _y) = (self.line_cycle - 1, self.scanline);
+        let (sprite_pixels, current_sprites) = self.eight_sprite_pixels();
         for i in 0..8 {
-            let mut background_pixel = add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 7-i as u8);
-            let (mut sprite_pixel, current_sprite) = if self.show_sprites { self.select_sprite_pixel() } else { (0, 0) };
+            let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
+            let background_pixel = if self.show_background && !(x < 8 && !self.show_background_left) {
+                add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 7-i as u8)
+            } else {
+                0
+            };
+            let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
+                (sprite_pixels[i], current_sprites[i])
+            } else {
+                (0, 0)
+            };
 
             // extract low and high bits from palette shift registers according to fine x, starting from left
             let low_palette_bit = (self.background_palette_sr_low & (1 << self.x)) >> self.x;
             let high_palette_bit = (self.background_palette_sr_high & (1 << self.x)) >> self.x;
             let palette_offset = (high_palette_bit << 1) | low_palette_bit;
 
-            if x < 8 && !self.show_background_left {
-                background_pixel = 0;
-            }
-            if x < 8 && !self.show_sprites_left {
-                sprite_pixel = 0;
-            }
             let mut palette_address = 0;
+
+            // if sprite_pixel != 0 {
+            //     if background_pixel != 0 {
+            //         if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
+            //             self.sprite_zero_hit = true;
+            //         }
+            //         if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
+            //             palette_address += 0x10;
+            //             palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
+            //             palette_address += sprite_pixel;
+            //         } else {
+            //             palette_address += palette_offset << 2;
+            //             palette_address += background_pixel;
+            //         }
+            //     } else { // displaying the sprite
+            //         palette_address += 0x10; // second half of palette table, "Background/Sprite select"
+            //         palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
+            //         palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
+            //     }
+            // } else { // displaying the background pixel
+            //     palette_address += palette_offset << 2; // Palette number from attribute table or OAM
+            //     palette_address += background_pixel; // Pixel value from tile data
+            // }
+
+
             if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
                 palette_address += 0x10; // second half of palette table, "Background/Sprite select"
                 palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
@@ -192,6 +263,7 @@ impl super::Ppu {
     }
 }
 
+#[inline(always)]
 fn add_bits(low: u8, high: u8, bit: u8) -> u8 {
     let low_bit = (low & 1 << bit) >> bit;
     let high_bit = ((high & 1 << bit) >> bit) << 1;
