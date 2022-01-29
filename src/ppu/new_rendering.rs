@@ -18,7 +18,6 @@ impl super::Ppu {
         // and the pixel we're concerned with is line_cycle - x-value?
 
         let mut pixels = [0u8; 8];
-        // let mut high_bits = [0u8; 8];
         let mut secondary_indices = [0usize; 8];
 
         for p in 0..8 {
@@ -26,27 +25,19 @@ impl super::Ppu {
             for i in 0..self.num_sprites {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
-                if self.sprite_counters[i] == 0 {
+                if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
+                    let diff = 7 - (self.line_cycle as u8 + p - self.sprite_counters[i]); // self.line_cycle is irrelevant here because
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
-                        secondary_indices[p] = i;
-                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1<<7) >> 7) as u8;
-                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1<<7) >> 7) as u8;
+                        secondary_indices[p as usize] = i;
+                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1 << diff) >> diff) as u8;
+                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1 << diff) >> diff) as u8;
                         if !(lb == 0 && hb == 0) {
-                            pixels[p] = (hb<<1) + lb;
+                            pixels[p as usize] = (hb << 1) + lb;
                             frozen = true;
                         }
                     }
-                }
-                // Have to shift pixels of all sprites with counter 0, whether or not they're the selected pixel. otherwise the pixels get pushed to the right.
-                if self.sprite_counters[i] == 0 {
-                    self.sprite_pattern_table_srs[i].0 <<= 1;
-                    self.sprite_pattern_table_srs[i].1 <<= 1;
-                }
-                // Every cycle, the 8 x-position counters for the sprites are decremented by one.
-                if self.sprite_counters[i] > 0 {
-                    self.sprite_counters[i] -= 1;
                 }
             }
         }
@@ -98,7 +89,6 @@ impl super::Ppu {
             //     palette_address += palette_offset << 2; // Palette number from attribute table or OAM
             //     palette_address += background_pixel; // Pixel value from tile data
             // }
-
 
             if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
                 palette_address += 0x10; // second half of palette table, "Background/Sprite select"
