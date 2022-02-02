@@ -93,8 +93,12 @@ pub struct Ppu {
 
     previous_a12:                  u8,
 
-    background_pattern_shift_register_low: u8,
-    background_pattern_shift_register_high: u8,
+    background_pattern_shift_register_low: u16,
+    background_pattern_shift_register_high: u16,
+    // background_pattern_limbo_low: u8,
+    // background_pattern_limbo_high: u8,
+    background_palette_limbo_low: u8,
+    background_palette_limbo_high: u8,
 }
 
 impl Ppu {
@@ -157,6 +161,10 @@ impl Ppu {
             previous_a12:                  0,
             background_pattern_shift_register_low: 0,
             background_pattern_shift_register_high: 0,
+            // background_pattern_limbo_low: 0,
+            // background_pattern_limbo_high: 0,
+            background_palette_limbo_low: 0,
+            background_palette_limbo_high: 0,
         }
     }
 

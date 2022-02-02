@@ -50,7 +50,7 @@ impl super::Ppu {
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
             let background_pixel = if self.show_background && !(x < 8 && !self.show_background_left) {
-                add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 7-i as u8)
+                add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 15 - (self.x + i as u8))
             } else {
                 0
             };
@@ -66,29 +66,6 @@ impl super::Ppu {
             let palette_offset = (high_palette_bit << 1) | low_palette_bit;
 
             let mut palette_address = 0;
-
-            // if sprite_pixel != 0 {
-            //     if background_pixel != 0 {
-            //         if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
-            //             self.sprite_zero_hit = true;
-            //         }
-            //         if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
-            //             palette_address += 0x10;
-            //             palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
-            //             palette_address += sprite_pixel;
-            //         } else {
-            //             palette_address += palette_offset << 2;
-            //             palette_address += background_pixel;
-            //         }
-            //     } else { // displaying the sprite
-            //         palette_address += 0x10; // second half of palette table, "Background/Sprite select"
-            //         palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
-            //         palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
-            //     }
-            // } else { // displaying the background pixel
-            //     palette_address += palette_offset << 2; // Palette number from attribute table or OAM
-            //     palette_address += background_pixel; // Pixel value from tile data
-            // }
 
             if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
                 palette_address += 0x10; // second half of palette table, "Background/Sprite select"
@@ -121,10 +98,18 @@ impl super::Ppu {
 
     #[inline(always)]
     pub fn new_perform_memory_fetch(&mut self) {
-        self.background_pattern_shift_register_low = self.low_pattern_table_byte;
-        self.background_pattern_shift_register_high = self.high_pattern_table_byte;
-        self.background_palette_sr_low = if self.attribute_table_byte & 1 == 1 { 0b11111111 } else { 0 };
-        self.background_palette_sr_high = if self.attribute_table_byte & 0b10 == 0b10 { 0b11111111 } else { 0 };
+        self.background_pattern_shift_register_low <<= 8;
+        self.background_pattern_shift_register_high <<= 8;
+        self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
+        self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
+        // self.background_pattern_shift_register_low = self.background_pattern_limbo_low;
+        // self.background_pattern_shift_register_high = self.background_pattern_limbo_high;
+        // self.background_pattern_limbo_low = self.low_pattern_table_byte;
+        // self.background_pattern_limbo_high = self.high_pattern_table_byte;
+        self.background_palette_sr_low = self.background_palette_limbo_low;
+        self.background_palette_sr_high = self.background_palette_limbo_high;
+        self.background_palette_limbo_low = if self.attribute_table_byte & 1 == 1 { 0b11111111 } else { 0 };
+        self.background_palette_limbo_high = if self.attribute_table_byte & 0b10 == 0b10 { 0b11111111 } else { 0 };
         self.inc_coarse_x();
         self.fetch_nametable_byte();
         self.fetch_attribute_table_byte();
@@ -168,6 +153,8 @@ impl super::Ppu {
                                 self.render_eight_pixels();
                                 rendered_scanline = true;
                             }
+                        }
+                        if self.line_cycle % 8 == 2 {
                             self.new_perform_memory_fetch();
                         }
                     },
@@ -254,8 +241,31 @@ impl super::Ppu {
 }
 
 #[inline(always)]
-fn add_bits(low: u8, high: u8, bit: u8) -> u8 {
+fn add_bits(low: u16, high: u16, bit: u8) -> u8 {
     let low_bit = (low & 1 << bit) >> bit;
     let high_bit = ((high & 1 << bit) >> bit) << 1;
-    high_bit + low_bit
+    (high_bit + low_bit) as u8
 }
+
+            // if sprite_pixel != 0 {
+            //     if background_pixel != 0 {
+            //         if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
+            //             self.sprite_zero_hit = true;
+            //         }
+            //         if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
+            //             palette_address += 0x10;
+            //             palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
+            //             palette_address += sprite_pixel;
+            //         } else {
+            //             palette_address += palette_offset << 2;
+            //             palette_address += background_pixel;
+            //         }
+            //     } else { // displaying the sprite
+            //         palette_address += 0x10; // second half of palette table, "Background/Sprite select"
+            //         palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
+            //         palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
+            //     }
+            // } else { // displaying the background pixel
+            //     palette_address += palette_offset << 2; // Palette number from attribute table or OAM
+            //     palette_address += background_pixel; // Pixel value from tile data
+            // }

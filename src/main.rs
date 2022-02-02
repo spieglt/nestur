@@ -28,7 +28,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
 use sdl2::messagebox::*;
 
-use cpuprofiler::PROFILER;
+// use cpuprofiler::PROFILER;
 
 enum GameExitMode {
     QuitApplication,
@@ -98,7 +98,7 @@ fn run_game(
     println!("loading game {}", filename);
 
     // Set up audio
-    // let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
+    let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
     let apu_buffer = Arc::new(Mutex::new(Vec::<f32>::new())); // stays in this thread, receives raw samples between frames
     let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
     let audio_device = audio::initialize(sdl_context, sdl_buffer).expect("Could not create audio device");
@@ -113,105 +113,51 @@ fn run_game(
     let mut cpu = Cpu::new(ppu, apu);
 
     // For throttling to 60 FPS
-    // let mut timer = Instant::now();
+    let mut timer = Instant::now();
     let mut fps_timer = Instant::now();
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
 
-    let mut cpu_budget: i32 = 1;
-
-    PROFILER.lock().unwrap().start("./main.profile").unwrap();
+    // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
 
 
-        if cpu_budget > 0 {
-            let cpu_cycles = cpu.step();
-            cpu_budget -= cpu_cycles as i32; // should be safe because no 1 cpu instruction takes more than a few clock cycles
-            // clock APU every other CPU cycle
-            // let mut apu_cycles = cpu_cycles / 2;
-            // if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
-            //     if half_cycle {        // and we have a half-cycle stored
-            //         apu_cycles += 1;   // use it
-            //         half_cycle = false;
-            //     } else {
-            //         half_cycle = true; // or save it for next odd cpu step
-            //     }
-            // }
-            // for _ in 0..apu_cycles {
-            //     // can't read CPU from APU so have to pass byte in here
-            //     let sample_byte = cpu.read(cpu.apu.dmc.current_address);
-            //     temp_buffer.push(cpu.apu.clock(sample_byte));
-            // }
-        } else {
-            for _ in 0..3 {
-                let (end_of_frame, rendered_scanline) = cpu.ppu.new_clock();
-                if rendered_scanline {
-                    cpu_budget += 3;
-                }
-                if end_of_frame {
-                    fps += 1; // keep track of how many frames we've rendered this second
-                    draw_to_window(texture, canvas, &cpu.ppu.screen_buffer)?; // draw the buffer to the window with SDL
-                    // let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
-                    // b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
-                    // if !audio_started {
-                    //     audio_started = true;
-                    //     audio_device.resume();
-                    // }
-                    /*let now = Instant::now();
-                    // if we're running faster than 60Hz, kill time
-                    if now < timer + Duration::from_millis(1000/60) {
-                        std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
-                    }
-                    timer = Instant::now();*/
-                    let outcome = process_events(event_pump, &filepath, &mut cpu);
-                    match outcome {
-                        GameExitMode::QuitApplication => break 'running,
-                        GameExitMode::Reset => return Ok(Some(GameExitMode::Reset)),
-                        GameExitMode::NewGame(g) => return Ok(Some(GameExitMode::NewGame(g))),
-                        GameExitMode::Nothing => (),
-                    }
-                }
-            }
-            cpu_budget += 1;
-        }
-
-
-/*
         // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
         let cpu_cycles = cpu.step();
         // clock APU every other CPU cycle
-        // let mut apu_cycles = cpu_cycles / 2;
-        // if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
-        //     if half_cycle {        // and we have a half-cycle stored
-        //         apu_cycles += 1;   // use it
-        //         half_cycle = false;
-        //     } else {
-        //         half_cycle = true; // or save it for next odd cpu step
-        //     }
-        // }
-        // for _ in 0..apu_cycles {
-        //     // can't read CPU from APU so have to pass byte in here
-        //     let sample_byte = cpu.read(cpu.apu.dmc.current_address);
-        //     temp_buffer.push(cpu.apu.clock(sample_byte));
-        // }
+        let mut apu_cycles = cpu_cycles / 2;
+        if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
+            if half_cycle {        // and we have a half-cycle stored
+                apu_cycles += 1;   // use it
+                half_cycle = false;
+            } else {
+                half_cycle = true; // or save it for next odd cpu step
+            }
+        }
+        for _ in 0..apu_cycles {
+            // can't read CPU from APU so have to pass byte in here
+            let sample_byte = cpu.read(cpu.apu.dmc.current_address);
+            temp_buffer.push(cpu.apu.clock(sample_byte));
+        }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
-            let end_of_frame = cpu.ppu.clock();
+            // let end_of_frame = cpu.ppu.clock();
+            let (end_of_frame, _rendered_scanline) = cpu.ppu.new_clock();
             if end_of_frame {
                 fps += 1; // keep track of how many frames we've rendered this second
                 draw_to_window(texture, canvas, &cpu.ppu.screen_buffer)?; // draw the buffer to the window with SDL
-                // let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
-                // b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
-                // if !audio_started {
-                //     audio_started = true;
-                //     audio_device.resume();
-                // }
-                /*let now = Instant::now();
+                let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
+                b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
+                if !audio_started {
+                    audio_started = true;
+                    audio_device.resume();
+                }
+                let now = Instant::now();
                 // if we're running faster than 60Hz, kill time
                 if now < timer + Duration::from_millis(1000/60) {
                     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
                 }
-                timer = Instant::now();*/
+                timer = Instant::now();
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
@@ -221,7 +167,6 @@ fn run_game(
                 }
             }
         }
-*/
 
         // handle keyboard events
         match poll_buttons(&cpu.strobe, &event_pump) {
@@ -241,7 +186,7 @@ fn run_game(
             timer_counter += 1;
         }
     }
-    PROFILER.lock().unwrap().stop().unwrap();
+    // PROFILER.lock().unwrap().stop().unwrap();
     cpu.ppu.mapper.save_battery_backed_ram();
     Ok(None)
 }
