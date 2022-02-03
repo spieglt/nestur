@@ -114,7 +114,7 @@ fn run_game(
 
     // For throttling to 60 FPS
     let mut timer = Instant::now();
-    let mut fps_timer = Instant::now();
+    let mut fps_timer = timer.clone();
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
 

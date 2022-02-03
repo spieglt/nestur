@@ -1,15 +1,6 @@
 
 impl super::Ppu {
 
-    // pub fn render_background_scanline(&mut self) -> Vec<u8> {
-    //     // render 8 pixels, then shift and such 64 times?
-    //     let mut scanline = vec![];
-    //     for _ in 0..32 {
-    //         scanline.append(&mut self.render_eight_pixels());
-    //     }
-    //     scanline
-    // }
-
     #[inline(always)]
     pub fn eight_sprite_pixels(&mut self) -> ([u8; 8], [usize; 8]) {
         // what we do now is: look at each sprite in secondary OAM, look at its counter
@@ -61,9 +52,10 @@ impl super::Ppu {
             };
 
             // extract low and high bits from palette shift registers according to fine x, starting from left
-            let low_palette_bit = (self.background_palette_sr_low & (1 << self.x)) >> self.x;
-            let high_palette_bit = (self.background_palette_sr_high & (1 << self.x)) >> self.x;
-            let palette_offset = (high_palette_bit << 1) | low_palette_bit;
+            let val = 15 - (self.x + i as u8);
+            let low_palette_bit = (self.background_palette_shift_register_low & (1 << val)) >> val;
+            let high_palette_bit = (self.background_palette_shift_register_high & (1 << val)) >> val;
+            let palette_offset = ((high_palette_bit << 1) | low_palette_bit) as u8;
 
             let mut palette_address = 0;
 
@@ -96,20 +88,38 @@ impl super::Ppu {
         }
     }
 
+    // pixel is rendered, then if cycle 1, data is loaded into registers...
+    // then registers are shifted, then memory fetch is performed
+    // ldr puts lptb in bpsrl, then atb in bpl
+    // shift registers affects pattern regs, palette regs, and feeds from latch
+    // memory fetch does: inx_coarse_x on 0
+
+    // cycle 0: render pixel, shift registers, inc coarse x
+    // cycle 1: render pixel, load data into registers, shift registers, fetch nametable byte
+    // cycle 2: render pixel, shift registers
+    // cycle 3: render pixel, shift registers, fetch atb
+    // cycle 4: render pixel, shift registers
+    // cycle 5: render pixel, shift registers, fetch lptb
+    // cycle 6: render pixel, shift registers
+    // cycle 7: render pixel, shift registers, fetch hptb
+
+    // render pixel and shift registers are semi-combined when batch rendering
+    // seems like pixel selection can occur before other things, except load data into registers?
+    // ok so on cycle 1, atb is set to palette latch
+
     #[inline(always)]
     pub fn new_perform_memory_fetch(&mut self) {
         self.background_pattern_shift_register_low <<= 8;
         self.background_pattern_shift_register_high <<= 8;
         self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
         self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
-        // self.background_pattern_shift_register_low = self.background_pattern_limbo_low;
-        // self.background_pattern_shift_register_high = self.background_pattern_limbo_high;
-        // self.background_pattern_limbo_low = self.low_pattern_table_byte;
-        // self.background_pattern_limbo_high = self.high_pattern_table_byte;
-        self.background_palette_sr_low = self.background_palette_limbo_low;
-        self.background_palette_sr_high = self.background_palette_limbo_high;
-        self.background_palette_limbo_low = if self.attribute_table_byte & 1 == 1 { 0b11111111 } else { 0 };
-        self.background_palette_limbo_high = if self.attribute_table_byte & 0b10 == 0b10 { 0b11111111 } else { 0 };
+
+        self.background_palette_shift_register_low <<= 8;
+        self.background_palette_shift_register_high <<= 8;
+        self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
+        self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
+        self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
+
         self.inc_coarse_x();
         self.fetch_nametable_byte();
         self.fetch_attribute_table_byte();
@@ -149,17 +159,17 @@ impl super::Ppu {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
                         if self.line_cycle % 8 == 1 {
+                            self.new_perform_memory_fetch();
                             if self.scanline != 261 {
                                 self.render_eight_pixels();
                                 rendered_scanline = true;
                             }
                         }
-                        if self.line_cycle % 8 == 2 {
-                            self.new_perform_memory_fetch();
-                        }
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                    321..=336 => if self.line_cycle % 8 == 1 { self.new_perform_memory_fetch() },
+                    321..=336 => if self.line_cycle % 8 == 1 {
+                        self.new_perform_memory_fetch();
+                    },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
                 }
