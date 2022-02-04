@@ -17,7 +17,9 @@ impl super::Ppu {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
                 if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
-                    let diff = 7 - (self.line_cycle as u8 + p - self.sprite_counters[i]); // self.line_cycle is irrelevant here because
+                    let diff = 7 - p;
+                    // point is that the sprite is stuck in colums of 8 or 16, because we're not taking self.x into account before calculating if conditional above?
+
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
@@ -107,19 +109,20 @@ impl super::Ppu {
     // seems like pixel selection can occur before other things, except load data into registers?
     // ok so on cycle 1, atb is set to palette latch
 
-    #[inline(always)]
-    pub fn new_perform_memory_fetch(&mut self) {
+    pub fn new_shift_registers(&mut self) {
         self.background_pattern_shift_register_low <<= 8;
         self.background_pattern_shift_register_high <<= 8;
         self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
         self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
-
         self.background_palette_shift_register_low <<= 8;
         self.background_palette_shift_register_high <<= 8;
         self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
         self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
         self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
+    }
 
+    #[inline(always)]
+    pub fn new_perform_memory_fetch(&mut self) {
         self.inc_coarse_x();
         self.fetch_nametable_byte();
         self.fetch_attribute_table_byte();
@@ -159,16 +162,18 @@ impl super::Ppu {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
                         if self.line_cycle % 8 == 1 {
-                            self.new_perform_memory_fetch();
                             if self.scanline != 261 {
                                 self.render_eight_pixels();
                                 rendered_scanline = true;
                             }
+                            self.new_perform_memory_fetch();
+                            self.new_shift_registers();
                         }
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
                     321..=336 => if self.line_cycle % 8 == 1 {
                         self.new_perform_memory_fetch();
+                        self.new_shift_registers();
                     },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
