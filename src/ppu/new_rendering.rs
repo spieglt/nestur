@@ -10,16 +10,14 @@ impl super::Ppu {
 
         let mut pixels = [0u8; 8];
         let mut secondary_indices = [0usize; 8];
-        let offset = self.line_cycle as u8 + self.x;
+
         for p in 0..8 {
             let mut frozen = false;
             for i in 0..self.num_sprites {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
-                if self.sprite_counters[i] <= offset && self.sprite_counters[i] + 8 > offset {
+                if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
                     let diff = 7 - p;
-                    // point is that the sprite is stuck in colums of 8 or 16, because we're not taking self.x into account before calculating if conditional above?
-
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
@@ -47,17 +45,20 @@ impl super::Ppu {
             } else {
                 0
             };
-            let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
-                (sprite_pixels[i], current_sprites[i])
-            } else {
-                (0, 0)
-            };
-
             // extract low and high bits from palette shift registers according to fine x, starting from left
             let val = 15 - (self.x + i as u8);
             let low_palette_bit = (self.background_palette_shift_register_low & (1 << val)) >> val;
             let high_palette_bit = (self.background_palette_shift_register_high & (1 << val)) >> val;
             let palette_offset = ((high_palette_bit << 1) | low_palette_bit) as u8;
+
+            // get sprites
+            let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
+                (sprite_pixels[i], current_sprites[i])
+            } else {
+                (0, 0)
+            };
+            // can't just merge these sprite pixels with background pixels 0..8. end of background might overlap with start of sprite.
+            // offset is self.x. how to push sprite into next pixel, and grab remainder of last?
 
             let mut palette_address = 0;
 
