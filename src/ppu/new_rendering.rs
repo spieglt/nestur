@@ -10,13 +10,13 @@ impl super::Ppu {
 
         let mut pixels = [0u8; 8];
         let mut secondary_indices = [0usize; 8];
-
+        let offset = self.line_cycle as u8 + self.x;
         for p in 0..8 {
             let mut frozen = false;
             for i in 0..self.num_sprites {
                 // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
                 // This output accompanies the data in the sprite's latch, to form a pixel.
-                if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
+                if self.sprite_counters[i] <= offset && self.sprite_counters[i] + 8 > offset {
                     let diff = 7 - p;
                     // point is that the sprite is stuck in colums of 8 or 16, because we're not taking self.x into account before calculating if conditional above?
 
