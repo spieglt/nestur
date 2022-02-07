@@ -3,18 +3,12 @@ impl super::Ppu {
 
     #[inline(always)]
     pub fn eight_sprite_pixels(&mut self) {
-        // what we do now is: look at each sprite in secondary OAM, look at its counter
-        // the counter is decremented each time: its value is distance from line_cycle
-        // so we just need to look at whether its x-value > line_cycle. if it's not, sprite is live,
-        // and the pixel we're concerned with is line_cycle - x-value?
-
         for p in 0..8 {
             let mut frozen = false;
             for i in 0..self.num_sprites {
-                // If the counter is zero, the sprite becomes "active", and the respective pair of shift registers for the sprite is shifted once every cycle.
-                // This output accompanies the data in the sprite's latch, to form a pixel.
                 if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
                     let diff = 7 - p;
+                    let line_delta = 7 - (self.line_cycle - self.sprite_counters[i] as usize);
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
@@ -22,17 +16,13 @@ impl super::Ppu {
                         let lb = ((self.sprite_pattern_table_srs[i].0 & 1 << diff) >> diff) as u8;
                         let hb = ((self.sprite_pattern_table_srs[i].1 & 1 << diff) >> diff) as u8;
                         if !(lb == 0 && hb == 0) {
-                            self.sprite_pixels[p + self.x as usize] = (hb << 1) + lb;
+                            self.sprite_pixels[p + line_delta] = (hb << 1) + lb;
                             frozen = true;
                         }
                     }
                 }
             }
         }
-        // so the fine x is changing, but the sprite's not changing the line cycle on which it displays?
-        // if self.sprite_pixels != [0; 16] {
-        //     println!("{:?}", self.sprite_pixels);
-        // }
     }
 
     #[inline(always)]
