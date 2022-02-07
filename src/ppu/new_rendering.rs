@@ -2,14 +2,11 @@
 impl super::Ppu {
 
     #[inline(always)]
-    pub fn eight_sprite_pixels(&mut self) -> ([u8; 8], [usize; 8]) {
+    pub fn eight_sprite_pixels(&mut self) {
         // what we do now is: look at each sprite in secondary OAM, look at its counter
         // the counter is decremented each time: its value is distance from line_cycle
         // so we just need to look at whether its x-value > line_cycle. if it's not, sprite is live,
         // and the pixel we're concerned with is line_cycle - x-value?
-
-        let mut pixels = [0u8; 8];
-        let mut secondary_indices = [0usize; 8];
 
         for p in 0..8 {
             let mut frozen = false;
@@ -21,23 +18,26 @@ impl super::Ppu {
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
-                        secondary_indices[p as usize] = i;
+                        self.secondary_indices[p as usize] = i;
                         let lb = ((self.sprite_pattern_table_srs[i].0 & 1 << diff) >> diff) as u8;
                         let hb = ((self.sprite_pattern_table_srs[i].1 & 1 << diff) >> diff) as u8;
                         if !(lb == 0 && hb == 0) {
-                            pixels[p as usize] = (hb << 1) + lb;
+                            self.sprite_pixels[p + self.x as usize] = (hb << 1) + lb;
                             frozen = true;
                         }
                     }
                 }
             }
         }
-        (pixels, secondary_indices)
+        // so the fine x is changing, but the sprite's not changing the line cycle on which it displays?
+        // if self.sprite_pixels != [0; 16] {
+        //     println!("{:?}", self.sprite_pixels);
+        // }
     }
 
     #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
-        let (sprite_pixels, current_sprites) = self.eight_sprite_pixels();
+        self.eight_sprite_pixels();
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
             let background_pixel = if self.show_background && !(x < 8 && !self.show_background_left) {
@@ -53,7 +53,7 @@ impl super::Ppu {
 
             // get sprites
             let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
-                (sprite_pixels[i], current_sprites[i])
+                (self.sprite_pixels[i], self.secondary_indices[i])
             } else {
                 (0, 0)
             };
@@ -89,6 +89,7 @@ impl super::Ppu {
             self.screen_buffer[offset + (i*3) + 1] = color[1];
             self.screen_buffer[offset + (i*3) + 2] = color[2];
         }
+        self.shift_sprite_pixels();
     }
 
     // pixel is rendered, then if cycle 1, data is loaded into registers...
@@ -120,6 +121,13 @@ impl super::Ppu {
         self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
         self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
         self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
+    }
+
+    fn shift_sprite_pixels(&mut self) {
+        for i in 0..8 {
+            self.sprite_pixels[i] = self.sprite_pixels[i + 8];
+            self.sprite_pixels[i + 8] = 0;
+        }
     }
 
     #[inline(always)]

@@ -97,6 +97,8 @@ pub struct Ppu {
     background_pattern_shift_register_high: u16,
     background_palette_shift_register_low: u16,
     background_palette_shift_register_high: u16,
+    sprite_pixels: [u8; 16],
+    secondary_indices: [usize; 8],
 }
 
 impl Ppu {
@@ -161,6 +163,8 @@ impl Ppu {
             background_pattern_shift_register_high: 0,
             background_palette_shift_register_low: 0,
             background_palette_shift_register_high: 0,
+            sprite_pixels: [0; 16],
+            secondary_indices: [0; 8],
         }
     }
 
