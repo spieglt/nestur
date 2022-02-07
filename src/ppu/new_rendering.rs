@@ -102,15 +102,16 @@ impl super::Ppu {
     // ok so on cycle 1, atb is set to palette latch
 
     pub fn new_shift_registers(&mut self) {
-        self.background_pattern_shift_register_low <<= 8;
-        self.background_pattern_shift_register_high <<= 8;
         self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
         self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
-        self.background_palette_shift_register_low <<= 8;
-        self.background_palette_shift_register_high <<= 8;
+        self.background_pattern_shift_register_low <<= 8;
+        self.background_pattern_shift_register_high <<= 8;
+
         self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
         self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
         self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
+        self.background_palette_shift_register_low <<= 8;
+        self.background_palette_shift_register_high <<= 8;
     }
 
     fn shift_sprite_pixels(&mut self) {
@@ -122,10 +123,13 @@ impl super::Ppu {
 
     #[inline(always)]
     pub fn new_perform_memory_fetch(&mut self) {
-        self.inc_coarse_x();
-        self.fetch_nametable_byte();
-        self.fetch_attribute_table_byte();
-        self.fetch_background_pattern_table_bytes();
+        match self.line_cycle % 8 {
+            0 => self.inc_coarse_x(),
+            1 => self.fetch_nametable_byte(),
+            3 => self.fetch_attribute_table_byte(),
+            5 => self.fetch_background_pattern_table_bytes(),
+            _ => (),
+        }
     }
 
     #[inline(always)]
@@ -165,14 +169,16 @@ impl super::Ppu {
                                 self.render_eight_pixels();
                                 rendered_scanline = true;
                             }
-                            self.new_perform_memory_fetch();
                             self.new_shift_registers();
                         }
+                        self.new_perform_memory_fetch();
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
-                    321..=336 => if self.line_cycle % 8 == 1 {
+                    321..=336 => {
+                        if self.line_cycle % 8 == 1 {
+                            self.new_shift_registers();
+                        }
                         self.new_perform_memory_fetch();
-                        self.new_shift_registers();
                     },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
