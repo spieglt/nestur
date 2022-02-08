@@ -27,6 +27,7 @@ impl super::Ppu {
 
     #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
+        self.shift_sprite_pixels();
         self.eight_sprite_pixels();
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
@@ -79,7 +80,6 @@ impl super::Ppu {
             self.screen_buffer[offset + (i*3) + 1] = color[1];
             self.screen_buffer[offset + (i*3) + 2] = color[2];
         }
-        self.shift_sprite_pixels();
     }
 
     // pixel is rendered, then if cycle 1, data is loaded into registers...
@@ -102,16 +102,16 @@ impl super::Ppu {
     // ok so on cycle 1, atb is set to palette latch
 
     pub fn new_shift_registers(&mut self) {
-        self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
-        self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
         self.background_pattern_shift_register_low <<= 8;
         self.background_pattern_shift_register_high <<= 8;
+        self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
+        self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
 
+        self.background_palette_shift_register_low <<= 8;
+        self.background_palette_shift_register_high <<= 8;
         self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
         self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
         self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
-        self.background_palette_shift_register_low <<= 8;
-        self.background_palette_shift_register_high <<= 8;
     }
 
     fn shift_sprite_pixels(&mut self) {
@@ -164,12 +164,10 @@ impl super::Ppu {
                 match self.line_cycle {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
-                        if self.line_cycle % 8 == 1 {
-                            if self.scanline != 261 {
-                                self.render_eight_pixels();
-                                rendered_scanline = true;
-                            }
+                        if self.line_cycle % 8 == 1 && self.scanline != 261 {
                             self.new_shift_registers();
+                            self.render_eight_pixels();
+                            rendered_scanline = true;
                         }
                         self.new_perform_memory_fetch();
                     },
