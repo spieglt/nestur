@@ -2,7 +2,10 @@
 impl super::Ppu {
 
     #[inline(always)]
-    pub fn eight_sprite_pixels(&mut self) {
+    pub fn eight_sprite_pixels(&mut self) -> ([u8; 8], [usize; 8]) {
+        let mut secondary_indices = [0usize; 8];
+        let mut sprite_pixels = [0u8; 8];
+        let offset = 5;
         for p in 0..8 {
             let mut frozen = false;
             for i in 0..self.num_sprites {
@@ -12,23 +15,23 @@ impl super::Ppu {
                     // The current pixel for each "active" sprite is checked (from highest to lowest priority),
                     // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
                     if !frozen {
-                        self.secondary_indices[p as usize] = i;
+                        secondary_indices[p as usize] = i;
                         let lb = ((self.sprite_pattern_table_srs[i].0 & 1 << diff) >> diff) as u8;
                         let hb = ((self.sprite_pattern_table_srs[i].1 & 1 << diff) >> diff) as u8;
                         if !(lb == 0 && hb == 0) {
-                            self.sprite_pixels[p + line_delta] = (hb << 1) + lb;
+                            sprite_pixels[p + line_delta] = (hb << 1) + lb;
                             frozen = true;
                         }
                     }
                 }
             }
         }
+        (sprite_pixels, secondary_indices)
     }
 
     #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
-        self.shift_sprite_pixels();
-        self.eight_sprite_pixels();
+        // let (sprite_pixels, secondary_indices) = self.eight_sprite_pixels();
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
             let background_pixel = if self.show_background && !(x < 8 && !self.show_background_left) {
@@ -43,11 +46,12 @@ impl super::Ppu {
             let palette_offset = ((high_palette_bit << 1) | low_palette_bit) as u8;
 
             // get sprites
-            let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
-                (self.sprite_pixels[i], self.secondary_indices[i])
-            } else {
-                (0, 0)
-            };
+            // let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
+            //     (sprite_pixels[i], secondary_indices[i])
+            // } else {
+            //     (0, 0)
+            // };
+            let (sprite_pixel, current_sprite) = if self.show_sprites { self.select_sprite_pixel() } else { (0, 0) };
             // can't just merge these sprite pixels with background pixels 0..8. end of background might overlap with start of sprite.
             // offset is self.x. how to push sprite into next pixel, and grab remainder of last?
 
@@ -112,13 +116,6 @@ impl super::Ppu {
         self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
         self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
         self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
-    }
-
-    fn shift_sprite_pixels(&mut self) {
-        for i in 0..8 {
-            self.sprite_pixels[i] = self.sprite_pixels[i + 8];
-            self.sprite_pixels[i + 8] = 0;
-        }
     }
 
     #[inline(always)]
