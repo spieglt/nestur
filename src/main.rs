@@ -98,7 +98,7 @@ fn run_game(
     println!("loading game {}", filename);
 
     // Set up audio
-    // let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
+    let mut temp_buffer: Vec<f32> = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
     let apu_buffer = Arc::new(Mutex::new(Vec::<f32>::new())); // stays in this thread, receives raw samples between frames
     let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
     let audio_device = audio::initialize(sdl_context, sdl_buffer).expect("Could not create audio device");

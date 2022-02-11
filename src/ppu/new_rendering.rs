@@ -2,67 +2,25 @@
 impl super::Ppu {
 
     #[inline(always)]
-    pub fn eight_sprite_pixels(&mut self) -> ([u8; 8], [usize; 8]) {
-        let mut secondary_indices = [0usize; 8];
-        let mut sprite_pixels = [0u8; 8];
-        let offset = 5;
-        for p in 0..8 {
-            let mut frozen = false;
-            for i in 0..self.num_sprites {
-                if self.sprite_counters[i] <= self.line_cycle as u8 && self.sprite_counters[i] + 8 > self.line_cycle as u8 {
-                    let diff = 7 - p;
-                    let line_delta = 7 - (self.line_cycle - self.sprite_counters[i] as usize);
-                    // The current pixel for each "active" sprite is checked (from highest to lowest priority),
-                    // and the first non-transparent pixel moves on to a multiplexer, where it joins the BG pixel.
-                    if !frozen {
-                        secondary_indices[p as usize] = i;
-                        let lb = ((self.sprite_pattern_table_srs[i].0 & 1 << diff) >> diff) as u8;
-                        let hb = ((self.sprite_pattern_table_srs[i].1 & 1 << diff) >> diff) as u8;
-                        if !(lb == 0 && hb == 0) {
-                            sprite_pixels[p + line_delta] = (hb << 1) + lb;
-                            frozen = true;
-                        }
-                    }
-                }
-            }
-        }
-        (sprite_pixels, secondary_indices)
-    }
-
-    #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
-        // let (sprite_pixels, secondary_indices) = self.eight_sprite_pixels();
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
+            let val = 15 - (self.x as usize + i);
             let background_pixel = if self.show_background && !(x < 8 && !self.show_background_left) {
-                add_bits(self.background_pattern_shift_register_low, self.background_pattern_shift_register_high, 15 - (self.x + i as u8))
+                self.background_pixels[val]
             } else {
                 0
             };
-            // extract low and high bits from palette shift registers according to fine x, starting from left
-            let val = 15 - (self.x + i as u8);
-            let low_palette_bit = (self.background_palette_shift_register_low & (1 << val)) >> val;
-            let high_palette_bit = (self.background_palette_shift_register_high & (1 << val)) >> val;
-            let palette_offset = ((high_palette_bit << 1) | low_palette_bit) as u8;
 
-            // get sprites
-            // let (sprite_pixel, current_sprite) = if self.show_sprites && !(x < 8 && !self.show_sprites_left) {
-            //     (sprite_pixels[i], secondary_indices[i])
-            // } else {
-            //     (0, 0)
-            // };
             let (sprite_pixel, current_sprite) = if self.show_sprites { self.select_sprite_pixel() } else { (0, 0) };
-            // can't just merge these sprite pixels with background pixels 0..8. end of background might overlap with start of sprite.
-            // offset is self.x. how to push sprite into next pixel, and grab remainder of last?
 
             let mut palette_address = 0;
-
             if background_pixel == 0 && sprite_pixel != 0 { // displaying the sprite
                 palette_address += 0x10; // second half of palette table, "Background/Sprite select"
                 palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
                 palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
             } else if background_pixel != 0 && sprite_pixel == 0 { // displaying the background pixel
-                palette_address += palette_offset << 2; // Palette number from attribute table or OAM
+                palette_address += self.palette_offsets[val]; // Palette number from attribute table or OAM
                 palette_address += background_pixel; // Pixel value from tile data
             } else if background_pixel != 0 && sprite_pixel != 0 {
                 if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
@@ -73,7 +31,7 @@ impl super::Ppu {
                     palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
                     palette_address += sprite_pixel;
                 } else {
-                    palette_address += palette_offset << 2;
+                    palette_address += self.palette_offsets[val];
                     palette_address += background_pixel;
                 }
             }
@@ -86,36 +44,17 @@ impl super::Ppu {
         }
     }
 
-    // pixel is rendered, then if cycle 1, data is loaded into registers...
-    // then registers are shifted, then memory fetch is performed
-    // ldr puts lptb in bpsrl, then atb in bpl
-    // shift registers affects pattern regs, palette regs, and feeds from latch
-    // memory fetch does: inx_coarse_x on 0
-
-    // cycle 0: render pixel, shift registers, inc coarse x
-    // cycle 1: render pixel, load data into registers, shift registers, fetch nametable byte
-    // cycle 2: render pixel, shift registers
-    // cycle 3: render pixel, shift registers, fetch atb
-    // cycle 4: render pixel, shift registers
-    // cycle 5: render pixel, shift registers, fetch lptb
-    // cycle 6: render pixel, shift registers
-    // cycle 7: render pixel, shift registers, fetch hptb
-
-    // render pixel and shift registers are semi-combined when batch rendering
-    // seems like pixel selection can occur before other things, except load data into registers?
-    // ok so on cycle 1, atb is set to palette latch
-
     pub fn new_shift_registers(&mut self) {
-        self.background_pattern_shift_register_low <<= 8;
-        self.background_pattern_shift_register_high <<= 8;
-        self.background_pattern_shift_register_low |= self.low_pattern_table_byte as u16;
-        self.background_pattern_shift_register_high |= self.high_pattern_table_byte as u16;
+        self.background_palette_latch = self.attribute_table_byte;
+        for i in 0..8 {
+            self.background_pixels[i+8] = self.background_pixels[i];
+            let new_pix = ((self.low_pattern_table_byte & (1<<i)) >> i)
+                + (((self.high_pattern_table_byte & (1<<i)) >> i) << 1);
+            self.background_pixels[i] = new_pix;
 
-        self.background_palette_shift_register_low <<= 8;
-        self.background_palette_shift_register_high <<= 8;
-        self.background_palette_latch = self.attribute_table_byte; // palette latch is unnecessary
-        self.background_palette_shift_register_low |= if self.background_palette_latch & 1 == 1 { 0b11111111 } else { 0 };
-        self.background_palette_shift_register_high |= if self.background_palette_latch & 0b10 == 0b10 { 0b11111111 } else { 0 };
+            self.palette_offsets[i+8] = self.palette_offsets[i];
+            self.palette_offsets[i] = self.background_palette_latch << 2;
+        }
     }
 
     #[inline(always)]
@@ -243,8 +182,8 @@ impl super::Ppu {
 
         // deal with mapper MMC3
         let current_a12 = ((self.v & 1 << 12) >> 12) as u8;
-        if rendering 
-            && (0..241).contains(&self.scanline)
+        if rendering
+            && self.scanline < 241
             && current_a12 != self.previous_a12
         {
             self.mapper.clock()
@@ -254,33 +193,3 @@ impl super::Ppu {
         (end_of_frame, rendered_scanline)
     }
 }
-
-#[inline(always)]
-fn add_bits(low: u16, high: u16, bit: u8) -> u8 {
-    let low_bit = (low & 1 << bit) >> bit;
-    let high_bit = ((high & 1 << bit) >> bit) << 1;
-    (high_bit + low_bit) as u8
-}
-
-            // if sprite_pixel != 0 {
-            //     if background_pixel != 0 {
-            //         if self.sprite_indexes[current_sprite] == 0 { // don't access index current_sprite. need to know which sprite we're on horizontally.
-            //             self.sprite_zero_hit = true;
-            //         }
-            //         if self.sprite_attribute_latches[current_sprite] & (1 << 5) == 0 { // sprite has high priority
-            //             palette_address += 0x10;
-            //             palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2;
-            //             palette_address += sprite_pixel;
-            //         } else {
-            //             palette_address += palette_offset << 2;
-            //             palette_address += background_pixel;
-            //         }
-            //     } else { // displaying the sprite
-            //         palette_address += 0x10; // second half of palette table, "Background/Sprite select"
-            //         palette_address += (self.sprite_attribute_latches[current_sprite] & 0b11) << 2; // bottom two bits of attribute byte, left shifted by two
-            //         palette_address += sprite_pixel; // bottom two bits are the value of the sprite pixel from pattern table
-            //     }
-            // } else { // displaying the background pixel
-            //     palette_address += palette_offset << 2; // Palette number from attribute table or OAM
-            //     palette_address += background_pixel; // Pixel value from tile data
-            // }
