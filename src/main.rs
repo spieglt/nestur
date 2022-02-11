@@ -98,7 +98,7 @@ fn run_game(
     println!("loading game {}", filename);
 
     // Set up audio
-    let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
+    // let mut temp_buffer = vec![]; // receives one sample each time the APU ticks. this is a staging buffer so we don't have to lock the mutex too much.
     let apu_buffer = Arc::new(Mutex::new(Vec::<f32>::new())); // stays in this thread, receives raw samples between frames
     let sdl_buffer = Arc::clone(&apu_buffer); // used in audio device's callback to select the samples it needs
     let audio_device = audio::initialize(sdl_context, sdl_buffer).expect("Could not create audio device");
@@ -125,20 +125,20 @@ fn run_game(
         // step CPU: perform 1 cpu instruction, getting back number of clock cycles it took
         let cpu_cycles = cpu.step();
         // clock APU every other CPU cycle
-        let mut apu_cycles = cpu_cycles / 2;
-        if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
-            if half_cycle {        // and we have a half-cycle stored
-                apu_cycles += 1;   // use it
-                half_cycle = false;
-            } else {
-                half_cycle = true; // or save it for next odd cpu step
-            }
-        }
-        for _ in 0..apu_cycles {
-            // can't read CPU from APU so have to pass byte in here
-            let sample_byte = cpu.read(cpu.apu.dmc.current_address);
-            temp_buffer.push(cpu.apu.clock(sample_byte));
-        }
+        // let mut apu_cycles = cpu_cycles / 2;
+        // if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
+        //     if half_cycle {        // and we have a half-cycle stored
+        //         apu_cycles += 1;   // use it
+        //         half_cycle = false;
+        //     } else {
+        //         half_cycle = true; // or save it for next odd cpu step
+        //     }
+        // }
+        // for _ in 0..apu_cycles {
+        //     // can't read CPU from APU so have to pass byte in here
+        //     let sample_byte = cpu.read(cpu.apu.dmc.current_address);
+        //     temp_buffer.push(cpu.apu.clock(sample_byte));
+        // }
         // clock PPU three times for every CPU cycle
         for _ in 0..cpu_cycles * 3 {
             // let end_of_frame = cpu.ppu.clock();
@@ -146,18 +146,18 @@ fn run_game(
             if end_of_frame {
                 fps += 1; // keep track of how many frames we've rendered this second
                 draw_to_window(texture, canvas, &cpu.ppu.screen_buffer)?; // draw the buffer to the window with SDL
-                let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
-                b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
-                if !audio_started {
-                    audio_started = true;
-                    audio_device.resume();
-                }
-                let now = Instant::now();
-                // if we're running faster than 60Hz, kill time
-                if now < timer + Duration::from_millis(1000/60) {
-                    std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
-                }
-                timer = Instant::now();
+                // let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
+                // b.append(&mut temp_buffer); // send this frame's audio data, emptying the temp buffer
+                // if !audio_started {
+                //     audio_started = true;
+                //     audio_device.resume();
+                // }
+                // let now = Instant::now();
+                // // if we're running faster than 60Hz, kill time
+                // if now < timer + Duration::from_millis(1000/60) {
+                //     std::thread::sleep(timer + Duration::from_millis(1000/60) - now);
+                // }
+                // timer = Instant::now();
                 let outcome = process_events(event_pump, &filepath, &mut cpu);
                 match outcome {
                     GameExitMode::QuitApplication => break 'running,
