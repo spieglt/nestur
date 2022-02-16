@@ -4,7 +4,7 @@ mod memory;
 pub mod serialize;
 mod new_rendering;
 
-use crate::cartridge::{Mapper, Mirror};
+use crate::cartridge::{cache, Mapper, Mirror};
 
 pub struct Ppu {
     pub screen_buffer: Vec<u8>, // raw RGB data for screen
@@ -21,6 +21,7 @@ pub struct Ppu {
     // Cartridge things
     pub mapper: Box<dyn Mapper>,
     mirroring_type: Mirror,
+    cache: cache::Cache, // 128KB cache: 2048 regions of 24 bytes
 
     // Each nametable byte is a reference to the start of an 8-byte sequence in the pattern table.
     // That sequence represents an 8x8 tile, from top row to bottom.
@@ -64,7 +65,7 @@ pub struct Ppu {
     num_sprites: usize,                // Number of sprites in the shift registers for the current scanline
 
     // Various flags set by registers
-    address_increment:         u16,
+    address_increment:             u16,
     sprite_pattern_table_base:     usize,
     background_pattern_table_base: usize,
     oam_address:                   usize,
@@ -93,12 +94,8 @@ pub struct Ppu {
 
     previous_a12:                  u8,
 
-    background_pattern_shift_register_low: u16,
-    background_pattern_shift_register_high: u16,
-    background_palette_shift_register_low: u16,
-    background_palette_shift_register_high: u16,
-    background_pixels: [u8; 16],
-    palette_offsets: [u8; 16],
+    background_pixels:             [u8; 16],
+    palette_offsets:               [u8; 16],
 }
 
 impl Ppu {
@@ -115,6 +112,7 @@ impl Ppu {
             w:                             0,
             mapper:                        mapper,
             mirroring_type:                mirroring_type,
+            cache:                         cache::Cache::new(),
             nametable_a:                   vec![0u8; 0x0400],
             nametable_b:                   vec![0u8; 0x0400],
             nametable_c:                   vec![0u8; 0x0400],
@@ -159,12 +157,8 @@ impl Ppu {
             read_buffer:                   0,
             recent_bits:                   0,
             previous_a12:                  0,
-            background_pattern_shift_register_low: 0,
-            background_pattern_shift_register_high: 0,
-            background_palette_shift_register_low: 0,
-            background_palette_shift_register_high: 0,
-            background_pixels: [0; 16],
-            palette_offsets: [0; 16],
+            background_pixels:             [0; 16],
+            palette_offsets:               [0; 16],
         }
     }
 

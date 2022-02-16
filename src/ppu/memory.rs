@@ -4,7 +4,7 @@ impl super::Ppu {
 
     pub fn read(&mut self, address: usize) -> u8 {
         match address {
-            0x0000..=0x1FFF => self.mapper.read(address),
+            0x0000..=0x1FFF => self.read_cache(address),
             0x2000..=0x3EFF => self.read_nametable(address),
             0x3F00..=0x3FFF => {
                 let a = address % 0x0020;
@@ -18,7 +18,7 @@ impl super::Ppu {
     pub fn write(&mut self, address: usize, value: u8) {
         // let address = addr % 0x4000;
         match address {
-            0x0000..=0x1FFF => self.mapper.write(address, value),
+            0x0000..=0x1FFF => self.write_cache(address, value),
             0x2000..=0x3EFF => self.write_nametable(address, value),
             0x3F00..=0x3FFF => {
                 // I did not read this closely enough for a long time.
@@ -112,5 +112,23 @@ impl super::Ppu {
                 }
             },
         }
+    }
+
+    pub fn read_cache(&mut self, addr: usize) -> u8 {
+        let bucket = addr / 64;
+        if self.cache.is_dirty(bucket) {
+            // fill bucket from cartridge, mark clean, return byte at addr
+            for i in 0..64 {
+                self.cache.data_lines[bucket][i] = self.mapper.read((bucket * 64) + i);
+            }
+            self.cache.mark_clean(bucket);
+        }
+        self.cache.data_lines[bucket][addr % 64]
+    }
+
+    pub fn write_cache(&mut self, addr: usize, value: u8) {
+        // write to the mapper and mark the bucket dirty
+        self.mapper.write(addr, value);
+        self.cache.mark_dirty(addr / 64);
     }
 }

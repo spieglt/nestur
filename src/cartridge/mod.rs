@@ -3,6 +3,7 @@ mod mmc1;
 mod uxrom;
 mod cnrom;
 mod mmc3;
+pub mod cache;
 pub mod serialize;
 
 use nrom::Nrom;

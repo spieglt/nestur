@@ -190,7 +190,7 @@ impl Cpu {
             0x4016          => self.read_controller(),
             0x4000..=0x4017 => 0, // can't read from these APU registers
             0x4018..=0x401F => 0, // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => self.ppu.mapper.read(address),
+            0x4020..=0xFFFF => self.ppu.read_cache(address),
             _ => panic!("invalid read from 0x{:02x}", address),
         };
         val
@@ -205,7 +205,7 @@ impl Cpu {
             0x4016          => self.write_controller(val),
             0x4000..=0x4017 => self.apu.write_reg(address, val),
             0x4018..=0x401F => (), // APU and I/O functionality that is normally disabled. See CPU Test Mode.
-            0x4020..=0xFFFF => self.ppu.mapper.write(address, val),
+            0x4020..=0xFFFF => self.ppu.write_cache(address, val),
             _ => panic!("invalid write to {:02x}", address),
         }
     }
