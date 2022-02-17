@@ -71,13 +71,13 @@ impl super::Ppu {
         }
 
         // advance clock
-        if self.scanline == 340 {
+        if self.scanline == 261 {
             self.scanline = 0;
-            self.line_cycle = 0;
+            self.line_cycle = 1;
             self.frame = self.frame.wrapping_add(1);
         } else {
             self.scanline += 1;
-            self.line_cycle = 0;
+            self.line_cycle = 1;
         }
         // TODO: MMC3
     }

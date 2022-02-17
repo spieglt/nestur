@@ -9,7 +9,7 @@ use crate::cartridge::{cache, Mapper, Mirror};
 pub struct Ppu {
     pub screen_buffer: Vec<u8>, // raw RGB data for screen
     line_cycle: usize, // x coordinate
-    scanline:   usize, // y coordinate
+    pub scanline:   usize, // y coordinate
     frame:      usize,
 
     // Internal registers
