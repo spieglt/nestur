@@ -6,8 +6,8 @@ impl super::Ppu {
         for _i in 0..32 { // line cycles 0-256
             self.inc_coarse_x();
             if self.scanline != 261 {
-                self.render_eight_pixels();
                 self.shift_registers();
+                self.render_eight_pixels();
             }
             self.fetch_nametable_byte();
             self.fetch_attribute_table_byte();
@@ -15,13 +15,16 @@ impl super::Ppu {
             self.line_cycle += 8;
         }
         self.copy_horizontal(); // 257
-        for _i in 0..3 { // 321-336
-            self.inc_coarse_x();
-            self.shift_registers();
-            self.fetch_nametable_byte();
-            self.fetch_attribute_table_byte();
-            self.fetch_background_pattern_table_bytes();
-        }
+        // 321-336
+        self.shift_registers();
+        self.fetch_nametable_byte();
+        self.fetch_attribute_table_byte();
+        self.fetch_background_pattern_table_bytes();
+        self.inc_coarse_x();
+        self.shift_registers();
+        self.fetch_nametable_byte();
+        self.fetch_attribute_table_byte();
+        self.fetch_background_pattern_table_bytes();
     }
 
     #[inline(always)]
