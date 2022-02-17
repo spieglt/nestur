@@ -6,8 +6,8 @@ impl super::Ppu {
         for _i in 0..32 { // line cycles 0-256
             self.inc_coarse_x();
             if self.scanline != 261 {
-                self.shift_registers();
                 self.render_eight_pixels();
+                self.shift_registers();
             }
             self.fetch_nametable_byte();
             self.fetch_attribute_table_byte();
@@ -32,9 +32,8 @@ impl super::Ppu {
                 self.trigger_nmi = true;
             }
         }
-        let rendering = self.rendering();
 
-        if rendering {
+        if self.rendering() {
             match self.scanline {
                 0..=239 => {
                     self.secondary_oam = vec![0xFF; 0x20]; // 1
@@ -48,7 +47,6 @@ impl super::Ppu {
                     self.nmi_change();
                 },
                 261 => {
-
                     self.render_scanline(); // 0..256
                     self.inc_y(); // 256
                     for _i in 0..24 { // 280-304
