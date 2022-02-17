@@ -2,6 +2,87 @@
 impl super::Ppu {
 
     #[inline(always)]
+    fn render_scanline(&mut self) {
+        for _i in 0..32 { // line cycles 0-256
+            self.inc_coarse_x();
+            if self.scanline != 261 {
+                self.shift_registers();
+                self.render_eight_pixels();
+            }
+            self.fetch_nametable_byte();
+            self.fetch_attribute_table_byte();
+            self.fetch_background_pattern_table_bytes();
+            self.line_cycle += 8;
+        }
+        self.copy_horizontal(); // 257
+        for _i in 0..3 { // 321-336
+            self.inc_coarse_x();
+            self.shift_registers();
+            self.fetch_nametable_byte();
+            self.fetch_attribute_table_byte();
+            self.fetch_background_pattern_table_bytes();
+        }
+    }
+
+    #[inline(always)]
+    pub fn run_scanline(&mut self) {
+        if self.nmi_delay > 0 {
+            self.nmi_delay -= 1;
+            if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
+                self.trigger_nmi = true;
+            }
+        }
+        let rendering = self.rendering();
+
+        if rendering {
+            match self.scanline {
+                0..=239 => {
+                    self.secondary_oam = vec![0xFF; 0x20]; // 1
+                    self.render_scanline(); // 0-256
+                    self.inc_y(); // 256
+                    self.evaluate_sprites(); // 257
+                    self.fetch_sprites();
+                },
+                241 => {
+                    self.vertical_blank = true;
+                    self.nmi_change();
+                },
+                261 => {
+
+                    self.render_scanline(); // 0..256
+                    self.inc_y(); // 256
+                    for _i in 0..24 { // 280-304
+                        self.copy_vertical();
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        // v blank
+        if self.scanline == 241 {
+            self.vertical_blank = true;
+            self.nmi_change();
+        } else if self.scanline == 261 {
+            self.vertical_blank = false;
+            self.nmi_change();
+            self.sprite_zero_hit = false;
+            self.sprite_overflow = false;
+        }
+
+        // advance clock
+        if self.scanline == 340 {
+            self.scanline = 0;
+            self.line_cycle = 0;
+            self.frame = self.frame.wrapping_add(1);
+        } else {
+            self.scanline += 1;
+            self.line_cycle = 0;
+        }
+        // TODO: MMC3
+    }
+
+    #[inline(always)]
     pub fn render_eight_pixels(&mut self) {
         for i in 0..8 {
             let (x, _y) = (self.line_cycle - 1 + i, self.scanline);
