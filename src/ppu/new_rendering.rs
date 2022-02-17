@@ -44,7 +44,7 @@ impl super::Ppu {
         }
     }
 
-    pub fn new_shift_registers(&mut self) {
+    pub fn shift_registers(&mut self) {
         self.background_palette_latch = self.attribute_table_byte;
         for i in 0..8 {
             self.background_pixels[i+8] = self.background_pixels[i];
@@ -58,7 +58,7 @@ impl super::Ppu {
     }
 
     #[inline(always)]
-    pub fn new_perform_memory_fetch(&mut self) {
+    pub fn perform_memory_fetch(&mut self) {
         match self.line_cycle % 8 {
             0 => self.inc_coarse_x(),
             1 => self.fetch_nametable_byte(),
@@ -82,7 +82,7 @@ impl super::Ppu {
 
 
     #[inline(always)]
-    pub fn new_clock(&mut self) -> (bool, bool) {
+    pub fn clock(&mut self) -> bool {
         if self.nmi_delay > 0 {
             self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
@@ -91,7 +91,6 @@ impl super::Ppu {
         }
 
         let rendering = self.rendering();
-        let mut rendered_scanline = false;
 
         // Visible scanlines (0-239)
         if rendering {
@@ -101,18 +100,17 @@ impl super::Ppu {
                     0 => (), // This is an idle cycle.
                     1..=256 => {
                         if self.line_cycle % 8 == 1 && self.scanline != 261 {
-                            self.new_shift_registers();
+                            self.shift_registers();
                             self.render_eight_pixels();
-                            rendered_scanline = true;
                         }
-                        self.new_perform_memory_fetch();
+                        self.perform_memory_fetch();
                     },
                     257 => self.copy_horizontal(), // At dot 257 of each scanline, if rendering is enabled, the PPU copies all bits related to horizontal position from t to v
                     321..=336 => {
                         if self.line_cycle % 8 == 1 {
-                            self.new_shift_registers();
+                            self.shift_registers();
                         }
-                        self.new_perform_memory_fetch();
+                        self.perform_memory_fetch();
                     },
                     x if x > 340 => panic!("cycle beyond 340: {}", x),
                     _ => (),
@@ -146,15 +144,16 @@ impl super::Ppu {
         }
 
         // v blank
-        if self.scanline == 241 && self.line_cycle == 1 {
-            self.vertical_blank = true;
-            self.nmi_change();
-        }
-        if self.scanline == 261 && self.line_cycle == 1 {
-            self.vertical_blank = false;
-            self.nmi_change();
-            self.sprite_zero_hit = false;
-            self.sprite_overflow = false;
+        if self.line_cycle == 1 {
+            if self.scanline == 241 {
+                self.vertical_blank = true;
+                self.nmi_change();
+            } else if self.scanline == 261 {
+                self.vertical_blank = false;
+                self.nmi_change();
+                self.sprite_zero_hit = false;
+                self.sprite_overflow = false;
+            }
         }
 
         // signal time to draw frame
@@ -190,6 +189,6 @@ impl super::Ppu {
         }
         self.previous_a12 = current_a12;
 
-        (end_of_frame, rendered_scanline)
+        end_of_frame
     }
 }

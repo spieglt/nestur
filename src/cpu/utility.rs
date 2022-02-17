@@ -1,24 +1,6 @@
-use super::{CARRY_FLAG, NEGATIVE_FLAG, STACK_OFFSET, ZERO_FLAG, Mode};
+use super::{CARRY_FLAG, NEGATIVE_FLAG, STACK_OFFSET, ZERO_FLAG};
 
 impl super::Cpu {
-
-    pub fn advance_pc(&mut self, mode: Mode) {
-        self.pc += match mode {
-            Mode::ABS => 3,
-            Mode::ABX => 3,
-            Mode::ABY => 3,
-            Mode::ACC => 1,
-            Mode::IMM => 2,
-            Mode::IMP => 1,
-            Mode::IDX => 2,
-            Mode::IND => 3,
-            Mode::INY => 2,
-            Mode::REL => 2,
-            Mode::ZPG => 2,
-            Mode::ZPX => 2,
-            Mode::ZPY => 2,
-        }
-    }
 
     pub fn add_offset_to_pc(&mut self, offset: i8) {
         match offset >= 0 {
