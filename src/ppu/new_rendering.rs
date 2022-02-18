@@ -59,7 +59,7 @@ impl super::Ppu {
                     for _i in 0..24 { // 280-304
                         self.copy_vertical();
                     }
-                    self.rest_of_the_stuff();
+                    self.h_blank_fetches();
                 },
                 _ => (),
             }
