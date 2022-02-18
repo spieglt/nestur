@@ -15,6 +15,9 @@ impl super::Ppu {
             self.line_cycle += 8;
         }
         self.copy_horizontal(); // 257
+    }
+
+    fn h_blank_fetches(&mut self) {
         // 321-336
         self.shift_registers();
         self.fetch_nametable_byte();
@@ -44,6 +47,7 @@ impl super::Ppu {
                     self.inc_y(); // 256
                     self.evaluate_sprites(); // 257
                     self.fetch_sprites();
+                    self.h_blank_fetches();
                 },
                 241 => {
                     self.vertical_blank = true;
@@ -55,6 +59,7 @@ impl super::Ppu {
                     for _i in 0..24 { // 280-304
                         self.copy_vertical();
                     }
+                    self.rest_of_the_stuff();
                 },
                 _ => (),
             }
