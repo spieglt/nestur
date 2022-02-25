@@ -5,11 +5,7 @@ impl super::Ppu {
     pub fn step_eight(&mut self) -> bool {
         // println!("scanline: {}, line_cycle: {}", self.scanline, self.line_cycle);
         if self.nmi_delay > 0 {
-            if self.nmi_delay <= 8 {
-                self.nmi_delay = 0;
-            } else {
-                self.nmi_delay -= 8;
-            }
+            self.nmi_delay -= 1;
             if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
                 self.trigger_nmi = true;
             }
