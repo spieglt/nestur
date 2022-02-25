@@ -2,6 +2,109 @@
 impl super::Ppu {
 
     #[inline(always)]
+    pub fn step_eight(&mut self) -> bool {
+        // println!("scanline: {}, line_cycle: {}", self.scanline, self.line_cycle);
+        if self.nmi_delay > 0 {
+            if self.nmi_delay <= 8 {
+                self.nmi_delay = 0;
+            } else {
+                self.nmi_delay -= 8;
+            }
+            if self.nmi_delay == 0 && self.should_generate_nmi && self.vertical_blank {
+                self.trigger_nmi = true;
+            }
+        }
+
+        if self.rendering() {
+            match self.scanline {
+                0..=239 => {
+                    if self.line_cycle < 8 {
+                        self.secondary_oam = vec![0xFF; 0x20]; // 1
+                    }
+                    if self.line_cycle < 256 {
+                        self.inc_coarse_x();
+                        self.shift_registers();
+                        self.render_eight_pixels();
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    } else if self.line_cycle == 256 {
+                        self.inc_y(); // 256
+                        self.copy_horizontal(); // 257
+                        self.evaluate_sprites(); // 257
+                        self.fetch_sprites();
+                    } else if self.line_cycle == 320 {
+                        self.shift_registers(); // 1
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    } else if self.line_cycle == 328 {
+                        self.inc_coarse_x();
+                        self.shift_registers();
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    }
+                },
+                261 => {
+                    if self.line_cycle < 256 {
+                        self.inc_coarse_x();
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    } else if self.line_cycle == 256 {
+                        self.inc_y(); // 256
+                        self.copy_horizontal(); // 257
+                    } else if self.line_cycle >= 280 && self.line_cycle <= 304 {
+                        self.copy_vertical();
+                    } else if self.line_cycle == 320 {
+                        self.shift_registers();
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    } else if self.line_cycle == 328 {
+                        self.inc_coarse_x();
+                        self.shift_registers();
+                        self.fetch_nametable_byte();
+                        self.fetch_attribute_table_byte();
+                        self.fetch_background_pattern_table_bytes();
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        // v blank
+        if self.scanline == 241 && self.line_cycle == 0 {
+            self.vertical_blank = true;
+            self.nmi_change();
+        } else if self.scanline == 261 && self.line_cycle == 0 {
+            self.vertical_blank = false;
+            self.nmi_change();
+            self.sprite_zero_hit = false;
+            self.sprite_overflow = false;
+        }
+
+        let end_of_frame = self.line_cycle == 256 && self.scanline == 240;
+
+        // advance clock
+        if self.line_cycle > 340 {
+            if self.scanline == 261 {
+                self.scanline = 0;
+                self.frame = self.frame.wrapping_add(1);
+            } else {
+                self.scanline += 1;
+            }
+            self.line_cycle = 0;
+        } else {
+            self.line_cycle += 8;
+        }
+        // TODO: MMC3
+
+        end_of_frame
+    }
+
+    #[inline(always)]
     fn render_scanline(&mut self) {
         for _i in 0..32 { // line cycles 0-256
             self.inc_coarse_x();
@@ -124,7 +227,7 @@ impl super::Ppu {
             }
             let pixel = self.palette_ram[palette_address as usize] as usize;
             let color: [u8; 3] = super::PALETTE_TABLE[pixel];
-            let offset = (self.scanline * 256 * 3) + ((self.line_cycle - 1) * 3);
+            let offset = (self.scanline * 256 * 3) + (self.line_cycle * 3);
             self.screen_buffer[offset + (i*3) + 0] = color[0];
             self.screen_buffer[offset + (i*3) + 1] = color[1];
             self.screen_buffer[offset + (i*3) + 2] = color[2];

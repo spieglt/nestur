@@ -117,14 +117,14 @@ fn run_game(
     let mut fps_timer = timer.clone();
     let mut fps = 0;
     let mut timer_counter = 0; // used to only check time every so many cycles
-    let mut cpu_budget: i16 = 0;
+    let mut cpu_thirds: i16 = 0;
 
     // PROFILER.lock().unwrap().start("./main.profile").unwrap();
     'running: loop {
 
-        if cpu_budget > 0 {
+        if cpu_thirds > 24 {
             let cpu_cycles = cpu.step() as i16;
-            cpu_budget -= cpu_cycles;
+            cpu_thirds -= cpu_cycles * 3;
             // clock APU every other CPU cycle
             let mut apu_cycles = cpu_cycles / 2;
             if cpu_cycles & 1 == 1 {   // if cpu step took an odd number of cycles
@@ -141,9 +141,9 @@ fn run_game(
                 temp_buffer.push(cpu.apu.clock(sample_byte));
             }
         } else {
-            cpu.ppu.run_scanline(); // 340 PPU cycles
-            cpu_budget += 340 / 3;
-            if cpu.ppu.scanline == 240 {
+            let end_of_frame = cpu.ppu.step_eight();
+            if end_of_frame {
+                cpu_thirds += 4;
                 fps += 1; // keep track of how many frames we've rendered this second
                 draw_to_window(texture, canvas, &cpu.ppu.screen_buffer)?; // draw the buffer to the window with SDL
                 let mut b = apu_buffer.lock().unwrap(); // unlock mutex to the real buffer
@@ -165,6 +165,8 @@ fn run_game(
                     GameExitMode::NewGame(g) => return Ok(Some(GameExitMode::NewGame(g))),
                     GameExitMode::Nothing => (),
                 }
+            } else {
+                cpu_thirds += 8;
             }
         }
 
